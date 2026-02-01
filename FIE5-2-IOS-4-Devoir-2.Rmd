@@ -287,9 +287,7 @@ W
     lambda*W
     ```
 
--   
-
-    Rappel et conseil : Tenter d'expliquer pourquoi on observe une
+-   Rappel et conseil : Tenter d'expliquer pourquoi on observe une
     différence. En particulier, pour cette explication penser à pourquoi
     $\lambda W$ peut être assimilée à une moyenne des niveaux de
     présence moyen de patients $m$ :
@@ -297,13 +295,13 @@ W
     avec $\mathbb{1}_m(t)$ la fonction d'indicatrice de présence du
     patient $m$
 
-On observe que L≈9 alors que λ*W≈11 La différence s’explique par le fait
-que :
+On observe que L≈9 alors que λ\*W≈11 La différence s’explique par le
+fait que :
 
--    L est une moyenne temporelle du nombre de patients présents à
-    chaque instant,
+-   L est une moyenne temporelle du nombre de patients présents à chaque
+    instant,
 
--    λ*W est une moyenne sur les durées de séjour des patients,
+-   λ\*W est une moyenne sur les durées de séjour des patients,
 
 -   la journée n’est pas en régime stationnaire (arrivées concentrées le
     matin, départs étalés), et certains patients sont encore présents
@@ -362,6 +360,90 @@ Réponse :
 
 ```{r}
 #_Entrez votre code R ici_
+
+# Import des données
+data_raw <- read_excel("Log_Patient_URO_12112015.xlsx")
+
+# on garde que l'arrivée initiale
+data_arrivals <- data_raw %>%
+  mutate(arrival_time = ymd_hms(`Timestamp start`)) %>%
+  group_by(ID) %>%                
+  slice_min(arrival_time, n = 1) %>%        
+  ungroup() %>%
+  mutate(
+    hour = hour(arrival_time) + minute(arrival_time)/60
+  ) %>%
+  filter(hour >= 8, hour <= 18)
+
+# Découpage en tranches horaires
+data_arrivals <- data_arrivals %>%
+  mutate(
+    tranche = cut(
+      hour,
+      breaks = c(8,10,12,14,16,18),
+      include.lowest = TRUE,
+      right = TRUE
+    )
+  )
+
+# Estimation des taux λ(t)
+lambda_hat <- data_arrivals %>%
+  count(tranche) %>%
+  mutate(lambda = n / 2) 
+
+# Définition des intervalles
+intervals <- tibble(
+  start  = c(8,10,12,14,16),
+  end    = c(10,12,14,16,18),
+  lambda = lambda_hat$lambda
+)
+
+# Simulation du NHPP (30 runs)
+set.seed(123)
+n_runs <- 30
+
+samples_nhpp <- map_dfr(1:n_runs, function(run_id) {
+
+  map_dfr(1:nrow(intervals), function(i) {
+
+    dt <- intervals$end[i] - intervals$start[i]
+    n_events <- rpois(1, intervals$lambda[i] * dt)
+
+    tibble(
+      run = run_id,
+      t = runif(n_events, intervals$start[i], intervals$end[i])
+    )
+  })
+}) %>%
+  arrange(run, t) %>%
+  group_by(run) %>%
+  mutate(id = row_number()) %>%
+  ungroup()
+
+# Illustration 1 : trajectoires
+samples_nhpp %>%
+  ggplot(aes(t, id, color = factor(run))) +
+  geom_point(alpha = 0.6) +
+  labs(
+    title = "Processus de Poisson non homogène – Arrivées service d’urologie",
+    x = "Temps (heures)",
+    y = "Nombre cumulé d’arrivées"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Illustration 2 : arrivées/heure
+samples_nhpp %>%
+  mutate(hour = cut(t, seq(8,18,by=1), include.lowest = TRUE)) %>%
+  count(run, hour) %>%
+  ggplot(aes(hour, n)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribution des arrivées par heure (NHPP simulé)",
+    x = "Heure",
+    y = "Nombre d’arrivées"
+  ) +
+  theme_minimal()
 ```
 
 ### Question 3) Modélisation de la durée de séjour par une distribution (/3)
