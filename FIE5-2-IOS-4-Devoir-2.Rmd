@@ -420,6 +420,97 @@ Réponse :
 
 ```{r}
 #_Entrez votre code R ici_
+
+library(readxl)
+library(MASS)
+
+data_service <- read_excel("Log_Patient_URO_12112015.xlsx")
+
+data_raw <- data_raw %>%
+  mutate(
+    datetime_begin = ymd_hms(`Timestamp start`),
+    datetime_end   = ymd_hms(`Timestamp end`)
+  )
+
+data_patient <- data_raw %>%
+  group_by(ID) %>%
+  summarise(
+    arrival_time = min(datetime_begin, na.rm = TRUE),
+    departure_time = max(datetime_end, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+data_patient <- data_patient %>%
+  mutate(
+    duree_sejour = as.numeric(difftime(departure_time,
+                                       arrival_time,
+                                       units = "hours"))
+  )
+
+duree <- data_patient$duree_sejour
+duree <- duree[!is.na(duree)]
+duree <- duree[duree > 0]
+
+summary(duree)
+hist(duree, breaks = 30)
+
+fit_norm <- fitdistr(duree, "normal")
+fit_norm
+
+fit_exp <- fitdistr(duree, "exponential")
+fit_exp
+
+fit_gamma <- fitdistr(duree, "gamma")
+fit_gamma
+
+fit_weib <- fitdistr(duree, "weibull")
+fit_weib
+
+AIC_fitdistr <- function(fit) {
+  k <- length(fit$estimate)
+  -2 * fit$loglik + 2 * k
+}
+
+AIC_norm  <- AIC_fitdistr(fit_norm)
+AIC_exp   <- AIC_fitdistr(fit_exp)
+AIC_gamma <- AIC_fitdistr(fit_gamma)
+AIC_weib  <- AIC_fitdistr(fit_weib)
+
+AIC_values <- data.frame(
+  Distribution = c("Normale", "Exponentielle", "Gamma", "Weibull"),
+  AIC = c(AIC_norm, AIC_exp, AIC_gamma, AIC_weib)
+)
+
+AIC_values[order(AIC_values$AIC), ]
+
+hist(duree, prob = TRUE, breaks = 30,
+     main = "Ajustement des lois – Durée de séjour",
+     xlab = "Durée")
+
+curve(dnorm(x,
+            mean = fit_norm$estimate[1],
+            sd   = fit_norm$estimate[2]),
+      add = TRUE, col = "blue", lwd = 2)
+
+curve(dexp(x,
+           rate = fit_exp$estimate),
+      add = TRUE, col = "red", lwd = 2)
+
+curve(dgamma(x,
+             shape = fit_gamma$estimate["shape"],
+             rate  = fit_gamma$estimate["rate"]),
+      add = TRUE, col = "green", lwd = 2)
+
+curve(dweibull(x,
+               shape = fit_weib$estimate["shape"],
+               scale = fit_weib$estimate["scale"]),
+      add = TRUE, col = "purple", lwd = 2)
+
+legend("topright",
+       legend = c("Normale", "Exponentielle", "Gamma", "Weibull"),
+       col = c("blue", "red", "green", "purple"),
+       lwd = 2)
+
 ```
 
 Quelles est la meilleure distribution ? (Justifiez) Comparez aussi les
@@ -429,10 +520,66 @@ variables statistiques.
 
 Réponse :
 
-*Entrez votre texte ici*
+Parmi les distributions étudiées, la loi de Weibull apparaît comme la
+plus appropriée pour modéliser la durée de séjour. Elle respecte le
+support strictement positif de la variable et reproduit correctement les
+principaux indicateurs statistiques, en particulier la variabilité
+observée. La loi Gamma aurait également pu constituer un choix
+pertinent, car elle présente des caractéristiques proches et un bon
+accord avec les données empiriques ; toutefois, la Weibull offre une
+flexibilité légèrement supérieure, notamment dans la modélisation des
+durées extrêmes et dans l’interprétation du comportement du taux de
+sortie au cours du séjour. La loi normale, bien que numériquement
+proche, reste conceptuellement inadaptée en raison de son support non
+borné inférieur, tandis que la loi exponentielle est clairement
+inappropriée car elle impose une variabilité trop élevée par rapport aux
+observations. Ainsi, la loi de Weibull est retenue comme meilleur
+compromis, la loi Gamma pouvant être considérée comme une alternative
+valable en second choix.
 
 ```{r}
 #_Entrez votre code R ici_
+
+# Indicateurs empiriques
+mean_emp <- mean(duree)
+sd_emp   <- sd(duree)
+cv_emp   <- sd_emp / mean_emp
+
+mean_norm <- fit_norm$estimate["mean"]
+sd_norm   <- fit_norm$estimate["sd"]
+cv_norm   <- sd_norm / mean_norm
+
+rate_exp <- fit_exp$estimate["rate"]
+
+mean_exp <- 1 / rate_exp
+sd_exp   <- 1 / rate_exp
+cv_exp   <- sd_exp / mean_exp
+
+shape_g <- fit_gamma$estimate["shape"]
+rate_g  <- fit_gamma$estimate["rate"]
+
+mean_gamma <- shape_g / rate_g
+sd_gamma   <- sqrt(shape_g) / rate_g
+cv_gamma   <- sd_gamma / mean_gamma
+
+shape_w <- fit_weib$estimate["shape"]
+scale_w <- fit_weib$estimate["scale"]
+
+mean_weib <- scale_w * gamma(1 + 1 / shape_w)
+sd_weib   <- scale_w * sqrt(
+  gamma(1 + 2 / shape_w) - gamma(1 + 1 / shape_w)^2
+)
+cv_weib <- sd_weib / mean_weib
+
+comparaison_table <- data.frame(
+  Distribution = c("Empirique", "Normale", "Exponentielle", "Gamma", "Weibull"),
+  Moyenne = c(mean_emp, mean_norm, mean_exp, mean_gamma, mean_weib),
+  Ecart_type = c(sd_emp, sd_norm, sd_exp, sd_gamma, sd_weib),
+  Coefficient_variation = c(cv_emp, cv_norm, cv_exp, cv_gamma, cv_weib)
+)
+
+comparaison_table
+
 ```
 
 Quel que soit votre réponse, refaites ce travail pour la distribution
@@ -443,10 +590,113 @@ de variation) et/ou leur paramètres d'échelle et de forme.
 
 Réponse :
 
-*Entrez votre texte ici*
+L’analyse des durées de séjour des patients selon une loi Gamma montre
+que, bien que la durée moyenne soit très proche entre les patients
+prioritaires (≈1,76) et non prioritaires (≈1,72), la dispersion diffère
+sensiblement. Les patients prioritaires présentent une variance plus
+élevée (1,66 contre 0,91) et un coefficient de variation plus important
+(0,73 contre 0,55), indiquant une plus grande variabilité relative de
+leurs durées de séjour. Cette différence se reflète également dans les
+paramètres de la loi Gamma : le paramètre shape des patients
+prioritaires (≈1,86) est plus faible que celui des non prioritaires
+(≈3,26), ce qui traduit une distribution plus asymétrique et étalée,
+avec une queue plus longue à droite. À l’inverse, la distribution des
+non prioritaires est plus concentrée autour de la moyenne. Ainsi, même
+si les durées moyennes sont similaires, les patients prioritaires
+montrent des séjours plus hétérogènes, ce qui peut avoir des
+implications pour la planification hospitalière et la gestion des
+ressources.
 
 ```{r}
 #_Entrez votre code R ici_
+
+data_patient <- data_raw %>%
+  mutate(
+    datetime_begin = ymd_hms(`Timestamp start`),
+    datetime_end   = ymd_hms(`Timestamp end`)
+  ) %>%
+  group_by(ID) %>%
+  summarise(
+    arrival_time = min(datetime_begin, na.rm = TRUE),
+    departure_time = max(datetime_end, na.rm = TRUE),
+    prioritaire = ifelse(any(grepl("PRIO", Activity_DETAILS)), "Oui", "Non"),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    duree_sejour = as.numeric(difftime(departure_time,
+                                       arrival_time,
+                                       units = "hours"))
+  )
+
+duree_prio <- data_patient %>%
+  filter(prioritaire == "Oui") %>%
+  pull(duree_sejour)
+
+duree_non_prio <- data_patient %>%
+  filter(prioritaire == "Non") %>%
+  pull(duree_sejour)
+
+# Nettoyage
+duree_prio <- duree_prio[duree_prio > 0 & !is.na(duree_prio)]
+duree_non_prio <- duree_non_prio[duree_non_prio > 0 & !is.na(duree_non_prio)]
+
+library(MASS)
+
+fit_gamma_prio <- fitdistr(duree_prio, "gamma")
+fit_gamma_non_prio <- fitdistr(duree_non_prio, "gamma")
+
+params_gamma <- data.frame(
+  Groupe = c("Prioritaires", "Non prioritaires"),
+  Shape = c(fit_gamma_prio$estimate["shape"],
+            fit_gamma_non_prio$estimate["shape"]),
+  Rate = c(fit_gamma_prio$estimate["rate"],
+           fit_gamma_non_prio$estimate["rate"])
+)
+
+params_gamma
+
+moments_gamma <- data.frame(
+  Groupe = c("Prioritaires", "Non prioritaires"),
+  Esperance = c(
+    fit_gamma_prio$estimate["shape"] / fit_gamma_prio$estimate["rate"],
+    fit_gamma_non_prio$estimate["shape"] / fit_gamma_non_prio$estimate["rate"]
+  ),
+  Variance = c(
+    fit_gamma_prio$estimate["shape"] / fit_gamma_prio$estimate["rate"]^2,
+    fit_gamma_non_prio$estimate["shape"] / fit_gamma_non_prio$estimate["rate"]^2
+  ),
+  Coefficient_variation = c(
+    1 / sqrt(fit_gamma_prio$estimate["shape"]),
+    1 / sqrt(fit_gamma_non_prio$estimate["shape"])
+  )
+)
+
+moments_gamma
+
+hist(duree_prio, prob = TRUE, breaks = 30,
+     col = rgb(1,0,0,0.35),
+     xlim = range(c(duree_prio, duree_non_prio)),
+     main = "Comparaison des durées de séjour – Loi Gamma",
+     xlab = "Durée (heures)")
+
+curve(dgamma(x,
+             shape = fit_gamma_prio$estimate["shape"],
+             rate  = fit_gamma_prio$estimate["rate"]),
+      col = "red", lwd = 2, add = TRUE)
+
+hist(duree_non_prio, prob = TRUE, breaks = 30,
+     col = rgb(0,0,1,0.35),
+     add = TRUE)
+
+curve(dgamma(x,
+             shape = fit_gamma_non_prio$estimate["shape"],
+             rate  = fit_gamma_non_prio$estimate["rate"]),
+      col = "blue", lwd = 2, add = TRUE)
+
+legend("topright",
+       legend = c("Prioritaires", "Non prioritaires"),
+       col = c("red", "blue"),
+       lwd = 2)
 ```
 
 ### Question 4) Modélisation de la durée de séjour par régression linéaire (/3)
