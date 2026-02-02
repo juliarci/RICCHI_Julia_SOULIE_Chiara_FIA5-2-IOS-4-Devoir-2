@@ -229,46 +229,6 @@ W
     library(dplyr)
     library(readxl)
 
-    # Chargement
-    df <- read_excel("Log_Patient_URO_12112015.xlsx")
-
-    # Nettoyage
-    df1 <- df %>%
-      rename(
-        Timestamp_start = `Timestamp start`,
-        Timestamp_end   = `Timestamp end`
-      ) %>%
-      mutate(
-        Timestamp_start = as.POSIXct(Timestamp_start, "%d/%m/%Y %H:%M:%S",       tz = "Europe/Paris"),
-        Timestamp_end   = as.POSIXct(Timestamp_end, "%d/%m/%Y %H:%M:%S",
-                                           tz = "Europe/Paris")
-      )
-
-    # ARRIVÉES
-    arrivees <- df1 %>%
-      filter(Activity_MACRO == "Entrée des Consultations") %>%
-      group_by(ID) %>%
-      summarise(arrivee = min(Timestamp_start)) %>%
-      ungroup() %>%
-      filter(format(arrivee, "%H:%M:%S") >= "08:00:00",
-             format(arrivee, "%H:%M:%S") <= "18:00:00")
-
-    lambda <- nrow(arrivees) / 10
-    lambda
-
-    # TEMPS DE SÉJOUR
-    temps_systeme <- df1 %>%
-      group_by(ID) %>%
-      summarise(
-        entree = min(Timestamp_start),
-        sortie = max(Timestamp_start)
-      ) %>%
-      ungroup() %>%
-      mutate(W = as.numeric(difftime(sortie, entree, units = "hours")))
-
-    W <- mean(temps_systeme$W)
-    W
-
     # OCCUPATION
     events <- bind_rows(
       temps_systeme %>% transmute(time = entree, delta = 1),
@@ -511,7 +471,47 @@ Réponse :
 *Entrez votre texte ici*
 
 ```{r}
-#_Entrez votre code R ici_
+library(dplyr)
+library(lubridate)
+
+# Crée la variable bloc 2h selon l'heure d'arrivée
+temps_systeme <- temps_systeme %>%
+  mutate(
+    heure_entree = hour(entree),
+    bloc_2h = case_when(
+      heure_entree >= 8 & heure_entree < 10 ~ "[08h;10h]",
+      heure_entree >= 10 & heure_entree < 12 ~ "[10h;12h]",
+      heure_entree >= 12 & heure_entree < 14 ~ "[12h;14h]",
+      heure_entree >= 14 & heure_entree < 16 ~ "[14h;16h]",
+      heure_entree >= 16 & heure_entree < 18 ~ "[16h;18h]",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(bloc_2h))  
+
+temps_systeme
+
+model1 <- lm(W ~ bloc_2h, data = temps_systeme)
+summary(model1)
+
+# prédictions sur le même dataset
+temps_systeme$pred_W1 <- predict(model1)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(temps_systeme, aes(x = bloc_2h, y = W)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.5, color = "blue") +
+  geom_point(aes(y = pred_W1), color = "red", size = 3) +
+  stat_summary(fun = mean, geom = "point", color = "darkgreen", size = 3) +
+  labs(
+    title = "Durée de séjour selon le bloc 2h",
+    x = "Bloc horaire d'arrivée",
+    y = "Durée de séjour W (heures)"
+  ) +
+  theme_minimal()
+
 ```
 
 Refaites un deuxième modèle linéaire intégrant une variable catégorielle
@@ -522,7 +522,43 @@ Réponse :
 *Entrez votre texte ici*
 
 ```{r}
-#_Entrez votre code R ici_
+df1 <- df1 %>%
+  mutate(prioritaire = ifelse(grepl("PRIO", Activity_DETAILS), "Oui", "Non"))
+
+temps_systeme2 <- temps_systeme %>%
+  dplyr::left_join(
+    df1 %>%
+      group_by(ID) %>%
+      summarise(prioritaire = ifelse(any(grepl("PRIO", Activity_DETAILS)), "Oui", "Non")),
+    by = "ID"
+  )
+
+df1 %>% filter(grepl("PRIO", Activity_DETAILS))
+table(temps_systeme2$prioritaire)
+model2 <- lm(W ~ bloc_2h + prioritaire, data = temps_systeme2)
+summary(model2)
+
+# prédictions
+temps_systeme2$pred_W2 <- predict(model2)
+```
+
+```{r}
+temps_systeme2 <- temps_systeme2 %>%
+  mutate(prioritaire = factor(prioritaire, levels = c("Oui", "Non")))
+
+temps_systeme2
+ggplot(temps_systeme2, aes(x = bloc_2h, y = W, color = prioritaire)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.5) +
+  geom_point(aes(y = pred_W2), shape = 17, size = 3) +
+  labs(
+    title = "Durée de séjour selon bloc 2h et priorité",
+    x = "Bloc horaire d'arrivée",
+    y = "Durée de séjour W (heures)",
+    color = "Prioritaire"
+  ) +
+  theme_minimal()
+
+
 ```
 
 ### Question 5) Modélisation de la durée de séjour par un taux de départ (/3)
