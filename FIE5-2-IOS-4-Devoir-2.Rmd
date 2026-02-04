@@ -829,10 +829,100 @@ Dans cette question, il vous est ainsi demandé :
 
 Réponse :
 
-*Entrez votre texte et formules ici*
+Pour une variable aléatoire $X$ suivant une loi Gamma de paramètres
+*shape* $k$ et *rate* $\lambda$, le taux de défaillance est défini par :
+
+$$
+\mu(t) = \frac{f(t)}{1-F(t)} = \frac{\text{densité à t}}{\text{survie à t}}, \quad t>0
+$$
+
+où :
+
+-   $f(t) = \dfrac{\lambda^k}{\Gamma(k)} t^{k-1} e^{-\lambda t}$ est la
+    densité,
+-   $F(t) = \int_0^t f(s) ds$ est la fonction de répartition,
+-   $S(t) = 1 - F(t)$ est la fonction de survie.
+
+Formules pour les distributions ajustées :
+
+Patients prioritaires :
+
+$$
+\mu_{\text{prioritaires}}(t) =
+\dfrac{
+\frac{1.857^{1.86}}{\Gamma(1.86)} t^{0.86} e^{-1.057 t}
+}{
+1 - \int_0^t \frac{1.857^{1.86}}{\Gamma(1.86)} s^{0.86} e^{-1.057 s} ds
+}, \quad t>0
+$$
+
+Patients non prioritaires :
+
+$$
+\mu_{\text{non-prioritaires}}(t) =
+\dfrac{
+\frac{1.892^{3.257}}{\Gamma(3.257)} t^{2.257} e^{-1.892 t}
+}{
+1 - \int_0^t \frac{1.892^{3.257}}{\Gamma(3.257)} s^{2.257} e^{-1.892 s} ds
+}, \quad t>0
+$$
+
+Tous les patients :
+
+$$
+\mu_{\text{tous}}(t) =
+\dfrac{
+\frac{1.5^{2.5}}{\Gamma(2.5)} t^{1.5} e^{-1.5 t}
+}{
+1 - \int_0^t \frac{1.5^{2.5}}{\Gamma(2.5)} s^{1.5} e^{-1.5 s} ds
+}, \quad t>0
+$$
 
 ```{r}
 #_Entrez votre code R ici_
+# Charger le package MASS pour fitdistr
+library(MASS)
+
+# Ajustement Gamma pour chaque groupe
+fit_gamma_all       <- fitdistr(duree, "gamma")
+fit_gamma_prio      <- fitdistr(duree_prio, "gamma")
+fit_gamma_non_prio  <- fitdistr(duree_non_prio, "gamma")
+
+# Récupération des paramètres shape et rate
+shape_all  <- fit_gamma_all$estimate["shape"]
+rate_all   <- fit_gamma_all$estimate["rate"]
+
+shape_prio <- fit_gamma_prio$estimate["shape"]
+rate_prio  <- fit_gamma_prio$estimate["rate"]
+
+shape_non_prio <- fit_gamma_non_prio$estimate["shape"]
+rate_non_prio  <- fit_gamma_non_prio$estimate["rate"]
+
+# Définition de la fonction hazard pour la Gamma
+hazard_gamma <- function(t, shape, rate) {
+  f <- dgamma(t, shape=shape, rate=rate)   # densité
+  S <- 1 - pgamma(t, shape=shape, rate=rate) # survie
+  return(f / S)
+}
+
+# Vecteur de temps pour le calcul
+t_vals <- seq(0.01, 10, by=0.01)  # éviter t=0 pour la Gamma
+
+# Calcul des hazard pour chaque groupe
+haz_all       <- hazard_gamma(t_vals, shape_all, rate_all)
+haz_prio      <- hazard_gamma(t_vals, shape_prio, rate_prio)
+haz_non_prio  <- hazard_gamma(t_vals, shape_non_prio, rate_non_prio)
+
+# Tracé du taux de défaillance
+plot(t_vals, haz_all, type="l", col="black", lwd=2,
+     ylab="Taux de défaillance μ(t)", xlab="Temps t",
+     main="Taux de défaillance - loi Gamma")
+lines(t_vals, haz_prio, col="red", lwd=2)
+lines(t_vals, haz_non_prio, col="blue", lwd=2)
+legend("topright", legend=c("Tous", "Prioritaires", "Non prioritaires"),
+       col=c("black","red","blue"), lwd=2)
+
+
 ```
 
 -   De construire et d'analyser un modèle (calcul de moyennes simples)
@@ -845,6 +935,195 @@ Réponse :
 
 ```{r}
 #_Entrez votre code R ici_
+
+# ===============================
+# 0. LIBRAIRIES
+# ===============================
+library(readxl)
+library(dplyr)
+library(lubridate)
+library(MASS)
+
+# ===============================
+# 1. IMPORT DES DONNÉES
+# ===============================
+data_raw <- read_excel("Log_Patient_URO_12112015.xlsx")
+
+# Adapter les noms de colonnes si besoin :
+# - patient_id
+# - datetime_begin
+# - datetime_end
+# - prioritaire
+
+# Conversion en format date-heure
+data_raw <- data_raw %>%
+  mutate(
+    datetime_begin = ymd_hms(`Timestamp start`),
+    datetime_end   = ymd_hms(`Timestamp end`)
+  )
+
+# ===============================
+# 2. RECONSTRUCTION DU SÉJOUR PAR PATIENT
+# ===============================
+data_patient <- data_raw %>%
+  group_by(ID) %>%
+  summarise(
+    arrival_time   = min(datetime_begin, na.rm = TRUE),
+    departure_time = max(datetime_end, na.rm = TRUE),
+    prioritaire = ifelse(any(grepl("PRIO", Activity_DETAILS)), "Oui", "Non"),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    duree_sejour = as.numeric(
+      difftime(departure_time, arrival_time, units = "hours")
+    )
+  )
+
+# Nettoyage
+data_patient <- data_patient %>%
+  filter(!is.na(duree_sejour), duree_sejour > 0)
+
+# ===============================
+# 3. AJUSTEMENT DES LOIS (MLE)
+# ===============================
+duree <- data_patient$duree_sejour
+
+fit_norm  <- fitdistr(duree, "normal")
+fit_exp   <- fitdistr(duree, "exponential")
+fit_gamma <- fitdistr(duree, "gamma")
+fit_weib  <- fitdistr(duree, "weibull")
+
+# --- Calcul manuel de l’AIC
+AIC_fitdistr <- function(fit) {
+  k <- length(fit$estimate)
+  -2 * fit$loglik + 2 * k
+}
+
+AIC_values <- data.frame(
+  Distribution = c("Normale", "Exponentielle", "Gamma", "Weibull"),
+  AIC = c(
+    AIC_fitdistr(fit_norm),
+    AIC_fitdistr(fit_exp),
+    AIC_fitdistr(fit_gamma),
+    AIC_fitdistr(fit_weib)
+  )
+)
+
+AIC_values <- AIC_values[order(AIC_values$AIC), ]
+print(AIC_values)
+
+# ===============================
+# 4. DÉCOUPAGE EN TRANCHES DE 30 MIN
+# ===============================
+breaks_30 <- seq(0, ceiling(max(duree)), by = 0.5)
+
+hazard_par_tranche <- function(durees, breaks) {
+
+  n <- length(breaks) - 1
+  hazard <- numeric(n)
+
+  for (i in 1:n) {
+
+    debut <- breaks[i]
+    fin   <- breaks[i + 1]
+
+    a_risque <- sum(durees >= debut)
+    sorties  <- sum(durees >= debut & durees < fin)
+
+    hazard[i] <- ifelse(a_risque > 0, sorties / a_risque, NA)
+  }
+
+  data.frame(
+    debut = breaks[-length(breaks)],
+    fin   = breaks[-1],
+    hazard = hazard
+  )
+}
+
+# ===============================
+# 5. MODÈLE GLOBAL
+# ===============================
+hazard_global <- hazard_par_tranche(duree, breaks_30)
+
+# ===============================
+# 6. SÉPARATION PAR BLOC D’ARRIVÉE DE 2H
+# ===============================
+data_patient <- data_patient %>%
+  mutate(
+    heure_arrivee = hour(arrival_time),
+    bloc_2h = cut(
+      heure_arrivee,
+      breaks = c(8, 10, 12, 14, 16, 18),
+      right = FALSE,
+      include.lowest = TRUE
+    )
+  )
+
+hazard_par_bloc <- data_patient %>%
+  group_by(bloc_2h) %>%
+  group_map(~ hazard_par_tranche(.x$duree_sejour, breaks_30),
+            .keep = TRUE)
+
+# ===============================
+# 7. SÉPARATION PRIORITAIRES / NON PRIORITAIRES
+# ===============================
+hazard_priorite <- data_patient %>%
+  group_by(prioritaire) %>%
+  group_map(~ hazard_par_tranche(.x$duree_sejour, breaks_30),
+            .keep = TRUE)
+
+# ===============================
+# 8. APERÇU DES RÉSULTATS
+# ===============================
+head(hazard_global)
+hazard_par_bloc
+hazard_priorite
+
+
+library(ggplot2)
+
+ggplot(hazard_global, aes(x = debut, y = hazard)) +
+  geom_line(size = 1) +
+  labs(
+    title = "Taux de risque de sortie – Global",
+    x = "Temps de séjour (heures)",
+    y = "Taux de risque"
+  ) +
+  theme_minimal()
+
+hazard_bloc_df <- bind_rows(
+  hazard_par_bloc,
+  .id = "bloc"
+)
+
+# Récupérer les vrais noms des blocs
+hazard_bloc_df$bloc <- levels(data_patient$bloc_2h)[as.numeric(hazard_bloc_df$bloc)]
+
+ggplot(hazard_bloc_df, aes(x = debut, y = hazard, color = bloc)) +
+  geom_line(size = 1) +
+  labs(
+    title = "Taux de risque par bloc d’arrivée",
+    x = "Temps de séjour (heures)",
+    y = "Taux de risque",
+    color = "Bloc d’arrivée"
+  ) +
+  theme_minimal()
+
+hazard_prior_df <- bind_rows(
+  hazard_priorite,
+  .id = "prioritaire"
+)
+
+ggplot(hazard_prior_df, aes(x = debut, y = hazard, color = prioritaire)) +
+  geom_line(size = 1) +
+  labs(
+    title = "Taux de risque – Patients prioritaires vs non prioritaires",
+    x = "Temps de séjour (heures)",
+    y = "Taux de risque",
+    color = "Prioritaire"
+  ) +
+  theme_minimal()
+
 ```
 
 ### Question 6) Calculs des niveaux d'occupation et validation des modèles (/5)
