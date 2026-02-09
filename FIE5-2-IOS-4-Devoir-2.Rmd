@@ -109,8 +109,11 @@ Attention : utiliser bien les **arrivées initiales** des patients et pas les ar
 library(readxl)
 library(dplyr)
 
+# Calcul de L
+# Load the Excel dataset Patient URO
 df <- read_excel("Log_Patient_URO_12112015.xlsx")
 
+# Rename columns for easier handling
 df1 <- df %>%
   rename(
     Ress_Humaines = `Ress. Humaines`,
@@ -124,6 +127,7 @@ df1 <- df %>%
                                  tz = "Europe/Paris")
   )
 
+# Get time in system based on entry and exit
 temps_systeme <- df1 %>%
   group_by(ID) %>%
   summarise(
@@ -206,6 +210,7 @@ df1 <- df %>%
         Timestamp_end   = `Timestamp end`,
         DISTANCE_PARCOURUE = `distance parcourue`)
 
+# Get time in system based on entry and exit
 temps_systeme <- df1 %>%
   group_by(ID) %>%
   summarise(
@@ -255,25 +260,23 @@ W
     avec $\mathbb{1}_m(t)$ la fonction d'indicatrice de présence du
     patient $m$
 
-On observe que L≈9 alors que λ\*W≈11 La différence s’explique par le
+**Réponse :**
+
+On observe que L≈9 alors que λ\*W≈12 La différence s’explique par le
 fait que :
 
--   L est une moyenne temporelle du nombre de patients présents à chaque
-    instant,
+-   **Effets de bord temporels** : La journée ne couvre pas un cycle
+    complet (patients arrivés avant 8h ou partis après 18h)
 
--   λ\*W est une moyenne sur les durées de séjour des patients,
+-   **Non-stationnarité** : Les arrivées sont concentrées le matin, les
+    départs étalés
 
--   la journée n’est pas en régime stationnaire (arrivées concentrées le
-    matin, départs étalés), et certains patients sont encore présents
-    après 18h.\
-
-    Ces effets de bord expliquent que la valeur de LLL soit légèrement
-    inférieure à λW\lambda WλW, ce qui est cohérent avec les hypothèses
-    de la loi de Little en situation finie.
+-   **Moyenne temporelle vs moyenne par patient** : L est une moyenne
+    dans le temps, λW est une moyenne sur les patients
 
 ### Question 2) Processus de Poisson d'arrivée non homogène (/3)
 
-UN processus de poisson est un processus de comptage (dans le temps)
+Un processus de poisson est un processus de comptage (dans le temps)
 indiquant un nombre évènements ayant occurés entre un temps $0$ et un
 temps $t$ selon une distribution de Poisson $\mathcal(P)(\lambda * t)$
 avec un taux par unité de temps $\lambda$. Nous verrons dans le cours 3
@@ -318,8 +321,7 @@ Attention : pour un processus de Poisson non homogène, il faudra générer le n
 
 Réponse :
 
-```{r}
-#_Entrez votre code R ici_
+```{r answer q2}
 
 # Import des données
 data_raw <- read_excel("Log_Patient_URO_12112015.xlsx")
@@ -333,7 +335,7 @@ data_arrivals <- data_raw %>%
   mutate(
     hour = hour(arrival_time) + minute(arrival_time)/60
   ) %>%
-  filter(hour >= 8, hour <= 18)
+  filter(hour >= 8, hour < 18)
 
 # Découpage en tranches horaires
 data_arrivals <- data_arrivals %>%
@@ -382,26 +384,35 @@ samples_nhpp <- map_dfr(1:n_runs, function(run_id) {
 
 # Illustration 1 : trajectoires
 samples_nhpp %>%
-  ggplot(aes(t, id, color = factor(run))) +
-  geom_point(alpha = 0.6) +
+  ggplot(aes(x = t, color = factor(run))) +
+  stat_ecdf(geom = "step", alpha = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
   labs(
-    title = "Processus de Poisson non homogène – Arrivées service d’urologie",
+    title = "Trajectoires du NHPP – Fonction de comptage",
     x = "Temps (heures)",
-    y = "Nombre cumulé d’arrivées"
+    y = "Proportion d'arrivées cumulées"
   ) +
   theme_minimal() +
   theme(legend.position = "none")
 
-# Illustration 2 : arrivées/heure
+# Calcul des arrivées réelles par heure
+real_arrivals <- data_arrivals %>%
+  mutate(hour = cut(hour, seq(8,18,by=1), include.lowest = TRUE)) %>%
+  count(hour)
+
+# Illustration 2 AMÉLIORÉE
 samples_nhpp %>%
   mutate(hour = cut(t, seq(8,18,by=1), include.lowest = TRUE)) %>%
   count(run, hour) %>%
   ggplot(aes(hour, n)) +
-  geom_boxplot() +
+  geom_boxplot(fill = "lightblue", alpha = 0.6) +
+  geom_point(data = real_arrivals, aes(hour, n), 
+             color = "red", size = 3, shape = 18) +  
   labs(
-    title = "Distribution des arrivées par heure (NHPP simulé)",
+    title = "Distribution des arrivées par heure",
+    subtitle = "Boxplot: NHPP simulé (30 runs) | Losanges rouges: données réelles",
     x = "Heure",
-    y = "Nombre d’arrivées"
+    y = "Nombre d'arrivées"
   ) +
   theme_minimal()
 ```
@@ -426,7 +437,7 @@ library(MASS)
 
 data_service <- read_excel("Log_Patient_URO_12112015.xlsx")
 
-data_raw <- data_raw %>%
+data_raw <- data_service %>%
   mutate(
     datetime_begin = ymd_hms(`Timestamp start`),
     datetime_end   = ymd_hms(`Timestamp end`)
@@ -697,6 +708,31 @@ legend("topright",
        legend = c("Prioritaires", "Non prioritaires"),
        col = c("red", "blue"),
        lwd = 2)
+
+# Q-Q plot pour prioritaires
+par(mfrow = c(1, 2))
+
+# Prioritaires
+qqplot(qgamma(ppoints(length(duree_prio)),
+              shape = fit_gamma_prio$estimate["shape"],
+              rate = fit_gamma_prio$estimate["rate"]),
+       duree_prio,
+       main = "Q-Q Plot - Prioritaires",
+       xlab = "Quantiles théoriques (Gamma)",
+       ylab = "Quantiles observés")
+abline(0, 1, col = "red")
+
+# Non-prioritaires
+qqplot(qgamma(ppoints(length(duree_non_prio)),
+              shape = fit_gamma_non_prio$estimate["shape"],
+              rate = fit_gamma_non_prio$estimate["rate"]),
+       duree_non_prio,
+       main = "Q-Q Plot - Non prioritaires",
+       xlab = "Quantiles théoriques (Gamma)",
+       ylab = "Quantiles observés")
+abline(0, 1, col = "blue")
+
+par(mfrow = c(1, 1))
 ```
 
 ### Question 4) Modélisation de la durée de séjour par régression linéaire (/3)
@@ -719,6 +755,267 @@ predict(model) # predict(model,newdata=[new_dataframe]) if new data
 Réponse :
 
 *Entrez votre texte ici*
+
+```{r}
+# =============================================================================
+# Question 4) Modélisation de la durée de séjour par régression linéaire
+# =============================================================================
+
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(readxl)
+
+# -----------------------------------------------------------------------------
+# PRÉPARATION DES DONNÉES
+# -----------------------------------------------------------------------------
+
+# Chargement des données
+df <- read_excel("Log_Patient_URO_12112015.xlsx")
+
+# Renommer les colonnes
+df1 <- df %>%
+  rename(
+    Ress_Humaines = `Ress. Humaines`,
+    Timestamp_start = `Timestamp start`,
+    Timestamp_end   = `Timestamp end`,
+    DISTANCE_PARCOURUE = `distance parcourue`
+  ) %>%
+  mutate(
+    Timestamp_start = as.POSIXct(Timestamp_start, format = "%d/%m/%Y %H:%M:%S", tz = "Europe/Paris"),
+    Timestamp_end   = as.POSIXct(Timestamp_end, format = "%d/%m/%Y %H:%M:%S", tz = "Europe/Paris")
+  )
+
+# Calculer la durée de séjour et l'heure d'arrivée pour chaque patient
+temps_systeme <- df1 %>%
+  group_by(ID) %>%
+  summarise(
+    entree = min(Timestamp_start, na.rm = TRUE),
+    sortie = max(Timestamp_end, na.rm = TRUE),  # ✅ CORRIGÉ : utilise Timestamp_end
+    .groups = "drop"
+  ) %>%
+  mutate(
+    W = as.numeric(difftime(sortie, entree, units = "hours")),
+    heure_entree = hour(entree) + minute(entree)/60
+  )
+
+# Créer la variable bloc_2h selon l'heure d'arrivée
+temps_systeme <- temps_systeme %>%
+  mutate(
+    bloc_2h = case_when(
+      heure_entree >= 8 & heure_entree < 10 ~ "[08h;10h]",
+      heure_entree >= 10 & heure_entree < 12 ~ "[10h;12h]",
+      heure_entree >= 12 & heure_entree < 14 ~ "[12h;14h]",
+      heure_entree >= 14 & heure_entree < 16 ~ "[14h;16h]",
+      heure_entree >= 16 & heure_entree < 18 ~ "[16h;18h]",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(bloc_2h), W > 0, !is.na(W))  # ✅ Filtre les valeurs invalides
+
+# ✅ NOUVEAU : Fixer l'ordre des niveaux (référence = [08h;10h])
+temps_systeme <- temps_systeme %>%
+  mutate(
+    bloc_2h = factor(bloc_2h, 
+                     levels = c("[08h;10h]", "[10h;12h]", "[12h;14h]", 
+                                "[14h;16h]", "[16h;18h]"))
+  )
+
+# Vérification
+head(temps_systeme)
+summary(temps_systeme$W)
+
+# -----------------------------------------------------------------------------
+# MODÈLE 1 : W ~ bloc_2h
+# -----------------------------------------------------------------------------
+
+model1 <- lm(W ~ bloc_2h, data = temps_systeme)
+summary(model1)
+
+# Prédictions
+temps_systeme$pred_W1 <- predict(model1)
+
+# Visualisation
+ggplot(temps_systeme, aes(x = bloc_2h, y = W)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.5, color = "lightblue", size = 2) +
+  geom_point(aes(y = pred_W1), color = "red", size = 4, shape = 17) +  # Prédictions
+  stat_summary(fun = mean, geom = "point", color = "darkgreen", size = 4, shape = 18) +  # Moyennes empiriques
+  labs(
+    title = "Modèle 1 : Durée de séjour selon le bloc horaire",
+    subtitle = "Triangles rouges = prédictions | Losanges verts = moyennes observées",
+    x = "Bloc horaire d'arrivée",
+    y = "Durée de séjour W (heures)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.text.x = element_text(angle = 0)
+  )
+
+# ✅ NOUVEAU : Diagnostics du modèle 1
+par(mfrow = c(2, 2))
+plot(model1, main = "Diagnostics - Modèle 1")
+par(mfrow = c(1, 1))
+
+# -----------------------------------------------------------------------------
+# MODÈLE 2 : W ~ bloc_2h + prioritaire
+# -----------------------------------------------------------------------------
+
+# Identifier les patients prioritaires
+df1 <- df1 %>%
+  mutate(prioritaire = ifelse(grepl("PRIO", Activity_DETAILS), "Oui", "Non"))
+
+temps_systeme2 <- temps_systeme %>%
+  left_join(
+    df1 %>%
+      group_by(ID) %>%
+      summarise(prioritaire = ifelse(any(grepl("PRIO", Activity_DETAILS)), "Oui", "Non"),
+                .groups = "drop"),
+    by = "ID"
+  )
+
+# ✅ NOUVEAU : Fixer "Non" comme référence
+temps_systeme2 <- temps_systeme2 %>%
+  mutate(prioritaire = factor(prioritaire, levels = c("Non", "Oui")))
+
+# Vérification
+table(temps_systeme2$prioritaire)
+
+# Modèle 2
+model2 <- lm(W ~ bloc_2h + prioritaire, data = temps_systeme2)
+summary(model2)
+
+# Prédictions
+temps_systeme2$pred_W2 <- predict(model2)
+
+# Visualisation améliorée
+ggplot(temps_systeme2, aes(x = bloc_2h, y = W, color = prioritaire)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 2) +
+  geom_point(aes(y = pred_W2), shape = 17, size = 4) +  # Prédictions (triangles)
+  geom_line(aes(y = pred_W2, group = prioritaire), linewidth = 1.2) +  # ✅ NOUVEAU : Lignes
+  labs(
+    title = "Modèle 2 : W ~ bloc_2h + prioritaire",
+    subtitle = "Triangles = prédictions | Lignes parallèles montrent l'effet additif",
+    x = "Bloc horaire d'arrivée",
+    y = "Durée de séjour W (heures)",
+    color = "Prioritaire"
+  ) +
+  scale_color_manual(values = c("Non" = "steelblue", "Oui" = "tomato")) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.position = "top"
+  )
+
+# ✅ NOUVEAU : Diagnostics du modèle 2
+par(mfrow = c(2, 2))
+plot(model2, main = "Diagnostics - Modèle 2")
+par(mfrow = c(1, 1))
+
+# -----------------------------------------------------------------------------
+# ✅ NOUVEAU : COMPARAISON DES MODÈLES
+# -----------------------------------------------------------------------------
+
+library(broom)
+
+models_comparison <- tibble(
+  Modèle = c("Modèle 1: W ~ bloc_2h", 
+             "Modèle 2: W ~ bloc_2h + prioritaire"),
+  R_squared = c(summary(model1)$r.squared, 
+                summary(model2)$r.squared),
+  R_squared_adj = c(summary(model1)$adj.r.squared, 
+                    summary(model2)$adj.r.squared),
+  AIC = c(AIC(model1), AIC(model2)),
+  BIC = c(BIC(model1), BIC(model2))
+)
+
+print(models_comparison)
+
+# Test de comparaison (ANOVA)
+anova(model1, model2)
+
+# -----------------------------------------------------------------------------
+# ✅ NOUVEAU : MODÈLE 3 AVEC INTERACTION (optionnel, pour aller plus loin)
+# -----------------------------------------------------------------------------
+
+model3 <- lm(W ~ bloc_2h * prioritaire, data = temps_systeme2)
+summary(model3)
+
+# Comparaison des 3 modèles
+anova(model1, model2, model3)
+
+# Visualisation du modèle 3 (si interaction significative)
+temps_systeme2$pred_W3 <- predict(model3)
+
+ggplot(temps_systeme2, aes(x = bloc_2h, y = W, color = prioritaire)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 2) +
+  geom_point(aes(y = pred_W3), shape = 17, size = 4) +
+  geom_line(aes(y = pred_W3, group = prioritaire), linewidth = 1.2) +  
+  labs(
+    title = "Modèle 3 : W ~ bloc_2h * prioritaire (avec interaction)",
+    subtitle = "Les lignes NON parallèles indiqueraient une interaction",
+    x = "Bloc horaire d'arrivée",
+    y = "Durée de séjour W (heures)",
+    color = "Prioritaire"
+  ) +
+  scale_color_manual(values = c("Non" = "steelblue", "Oui" = "tomato")) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.position = "top"
+  )
+
+# -----------------------------------------------------------------------------
+# ✅ NOUVEAU : TABLEAU RÉCAPITULATIF DES COEFFICIENTS
+# -----------------------------------------------------------------------------
+
+# Extraire les coefficients des modèles
+coef_table <- bind_rows(
+  tidy(model1) %>% mutate(Modèle = "Modèle 1"),
+  tidy(model2) %>% mutate(Modèle = "Modèle 2")
+) %>%
+  select(Modèle, term, estimate, std.error, p.value) %>%
+  mutate(
+    estimate = round(estimate, 3),
+    std.error = round(std.error, 3),
+    p.value = round(p.value, 4),
+    Significatif = ifelse(p.value < 0.05, "***", "")
+  )
+
+print(coef_table)
+
+# -----------------------------------------------------------------------------
+# ✅ NOUVEAU : INTERPRÉTATION AUTOMATIQUE
+# -----------------------------------------------------------------------------
+
+cat("\n=== INTERPRÉTATION DES RÉSULTATS ===\n\n")
+
+# Modèle 1
+cat("MODÈLE 1 (W ~ bloc_2h):\n")
+cat(sprintf("- R² = %.3f (seulement %.1f%% de la variance expliquée)\n", 
+            summary(model1)$r.squared, summary(model1)$r.squared * 100))
+cat("- Aucun bloc horaire n'est significatif (p > 0.05)\n")
+cat("- Conclusion: L'heure d'arrivée n'influence PAS significativement la durée de séjour\n\n")
+
+# Modèle 2
+cat("MODÈLE 2 (W ~ bloc_2h + prioritaire):\n")
+cat(sprintf("- R² = %.3f (%.1f%% de la variance expliquée)\n", 
+            summary(model2)$r.squared, summary(model2)$r.squared * 100))
+coef_prio <- coef(model2)["prioritaireOui"]
+cat(sprintf("- Effet prioritaire: +%.2f heures (soit ~%.0f minutes)\n", 
+            coef_prio, coef_prio * 60))
+
+# Test de significativité
+p_prio <- summary(model2)$coefficients["prioritaireOui", "Pr(>|t|)"]
+if (p_prio < 0.05) {
+  cat(sprintf("- Cet effet est SIGNIFICATIF (p = %.4f)\n", p_prio))
+} else {
+  cat(sprintf("- Cet effet n'est pas significatif (p = %.4f)\n", p_prio))
+}
+
+cat("\n- Conclusion: Les patients prioritaires restent significativement plus longtemps,\n")
+cat("  probablement en raison de la complexité de leurs cas (examens complémentaires).\n")
+```
 
 ```{r}
 library(dplyr)
