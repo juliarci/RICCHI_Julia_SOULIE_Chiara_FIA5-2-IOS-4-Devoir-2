@@ -1424,24 +1424,11 @@ ggplot(hazard_prior_df, aes(x = debut, y = hazard, color = prioritaire)) +
 
 ```
 
-**Interprétation des taux de risque par tranches :**
+Interprétation des taux de risque par tranches :
 
-**Global** : Le taux de sortie augmente progressivement, avec un pic
-vers 2-3h de séjour. Peu de patients sortent dans la première heure
-(temps minimum de consultation).
+Les résultats montrent une différence nette entre les groupes. Les patients non prioritaires présentent un taux de sortie plus élevé et plus concentré, correspondant à des prises en charge plus simples, tandis que les patients prioritaires ont un taux plus faible et plus étalé, reflétant des parcours plus longs et plus variables. L’estimation empirique par tranches de trente minutes confirme ces tendances et met également en évidence un effet organisationnel lié à l’heure d’arrivée, les patients arrivant tard étant incités à sortir avant la fermeture du service.
 
-**Par bloc d'arrivée** : Les patients arrivant tôt le matin ont des taux
-de sortie plus étalés dans le temps, tandis que ceux arrivant
-l'après-midi sortent plus rapidement (probablement consultations plus
-courtes en fin de journée).
-
-**Par priorité** : - Patients prioritaires : taux plus faible et plus
-étalé → séjours plus longs - Patients non-prioritaires : taux plus
-concentré → séjours plus courts et homogènes
-
-Ces observations confirment qu'un modèle Gamma avec des paramètres
-différents selon la priorité serait pertinent pour simuler finement les
-durées de séjour.
+En conclusion, l’analyse théorique et empirique valide le choix de la loi Gamma pour modéliser les durées de séjour et justifie l’utilisation de paramètres distincts selon la priorité des patients, base essentielle pour les simulations ultérieures.
 
 ### Question 6) Calculs des niveaux d'occupation et validation des modèles (/5)
 
@@ -1632,21 +1619,14 @@ tableau_metriques <- data.frame(
 
 print(tableau_metriques, row.names = FALSE, digits = 3)
 ```
+ Dans cette première partie, trente journées complètes ont été simulées en combinant un processus de Poisson par blocs horaires pour les arrivées et différentes lois de durée de séjour (Exponentielle, Gamma et Weibull). La comparaison entre l’occupation réelle et les prédictions moyennes montre que le modèle Gamma reproduit le plus fidèlement la dynamique observée, notamment le pic d’occupation en milieu de journée. Les intervalles de confiance restent toutefois larges, traduisant une forte variabilité intrinsèque du système, en particulier en fin de journée où des effets de bord apparaissent avec des patients restant après l’horaire de fermeture.
+
+Les métriques quantitatives confirment ces observations graphiques. Le modèle Gamma présente l’erreur moyenne la plus faible et un biais proche de zéro, tandis que le modèle exponentiel surestime l’occupation et ne capture pas correctement la variabilité des durées de séjour. Ces résultats sont cohérents avec les analyses précédentes basées sur les critères d’information et l’étude du taux de défaillance, et valident le choix de la loi Gamma pour la modélisation des durées.
+
 
 Refaites ce travail d'estimation de l'occupation en considérant les
 arrivées des patients connues et visualiser et analyser les gains en
 terme de qualité de prédiction.
-
-**Analyse des résultats :**
-
-Le modèle **Gamma** donne les meilleures performances avec le MAE le
-plus faible. Les intervalles de confiance capturent bien la variabilité.
-On observe plus d'écart en fin de journée car certains patients partent
-après 18h (effet de bord).
-
-Les modèles Exponentiel et Weibull donnent des résultats proches mais
-moins bons que Gamma, ce qui confirme le choix fait à la Question 3
-(AIC). Réponse :
 
 *Entrez votre texte ici*
 
@@ -1792,20 +1772,9 @@ print(gains, row.names = FALSE, digits = 1)
 Notes : Ici, on ne sépare pas les données en données d'entraînement et de test pour des raisons pratiques de quantité de données mais c'est un point à tenir en compte dans une vrai validation de modèle.
 ```
 
-**Analyse des gains :**
+Dans cette seconde partie, les heures d’arrivée réelles ont été utilisées tout en conservant la simulation des durées de séjour. Cette approche permet d’isoler l’impact du modèle de durée indépendamment de l’incertitude liée aux arrivées. Les performances s’améliorent alors nettement, avec une réduction de l’erreur moyenne de l’ordre de 30 à 50 pour cent selon les modèles, et des intervalles de confiance beaucoup plus étroits. Cela montre que la variabilité du processus d’arrivée constitue la principale source d’incertitude dans la prédiction de l’occupation.
 
-En utilisant les arrivées réelles, on gagne environ 30-50% de précision
-(réduction du MAE). Cela montre que la variabilité du processus
-d'arrivée est la principale source d'erreur.
-
-Les intervalles de confiance sont beaucoup plus étroits, ce qui rend les
-prédictions plus fiables. En pratique, cela signifie que si on connaît
-les arrivées de la journée (via un système de RDV ou de tracking), on
-peut prédire l'occupation future avec bien plus de précision.
-
-**Application pratique** : Un système de suivi en temps réel des
-arrivées permettrait d'anticiper les pics d'occupation et d'ajuster les
-ressources (personnel, salles).
+D’un point de vue opérationnel, ces résultats soulignent l’intérêt majeur d’un suivi en temps réel des arrivées. Une meilleure connaissance des flux entrants permettrait d’anticiper les pics d’occupation, d’adapter les ressources au cours de la journée et de limiter les phénomènes de congestion. En conclusion, le modèle combinant un processus d’arrivée de Poisson par blocs horaires et une loi Gamma pour les durées de séjour offre un compromis pertinent entre simplicité et précision, et constitue une base solide pour une gestion dynamique et optimisée du service d’urologie.
 
 ### Question bonus (/1) :
 
