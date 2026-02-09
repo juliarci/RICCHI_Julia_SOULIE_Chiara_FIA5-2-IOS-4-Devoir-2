@@ -757,18 +757,13 @@ Réponse :
 *Entrez votre texte ici*
 
 ```{r}
-# =============================================================================
-# Question 4) Modélisation de la durée de séjour par régression linéaire
-# =============================================================================
 
 library(dplyr)
 library(lubridate)
 library(ggplot2)
 library(readxl)
+library(broom)  # ✅ IMPORTANT : Charger broom au début !
 
-# -----------------------------------------------------------------------------
-# PRÉPARATION DES DONNÉES
-# -----------------------------------------------------------------------------
 
 # Chargement des données
 df <- read_excel("Log_Patient_URO_12112015.xlsx")
@@ -791,7 +786,7 @@ temps_systeme <- df1 %>%
   group_by(ID) %>%
   summarise(
     entree = min(Timestamp_start, na.rm = TRUE),
-    sortie = max(Timestamp_end, na.rm = TRUE),  # ✅ CORRIGÉ : utilise Timestamp_end
+    sortie = max(Timestamp_end, na.rm = TRUE),
     .groups = "drop"
   ) %>%
   mutate(
@@ -811,9 +806,8 @@ temps_systeme <- temps_systeme %>%
       TRUE ~ NA_character_
     )
   ) %>%
-  filter(!is.na(bloc_2h), W > 0, !is.na(W))  # ✅ Filtre les valeurs invalides
+  filter(!is.na(bloc_2h), W > 0, !is.na(W))
 
-# ✅ NOUVEAU : Fixer l'ordre des niveaux (référence = [08h;10h])
 temps_systeme <- temps_systeme %>%
   mutate(
     bloc_2h = factor(bloc_2h, 
@@ -825,9 +819,9 @@ temps_systeme <- temps_systeme %>%
 head(temps_systeme)
 summary(temps_systeme$W)
 
-# -----------------------------------------------------------------------------
-# MODÈLE 1 : W ~ bloc_2h
-# -----------------------------------------------------------------------------
+# ==============================================================================
+# MODÈLE 1
+# ==============================================================================
 
 model1 <- lm(W ~ bloc_2h, data = temps_systeme)
 summary(model1)
@@ -838,8 +832,8 @@ temps_systeme$pred_W1 <- predict(model1)
 # Visualisation
 ggplot(temps_systeme, aes(x = bloc_2h, y = W)) +
   geom_jitter(width = 0.2, height = 0, alpha = 0.5, color = "lightblue", size = 2) +
-  geom_point(aes(y = pred_W1), color = "red", size = 4, shape = 17) +  # Prédictions
-  stat_summary(fun = mean, geom = "point", color = "darkgreen", size = 4, shape = 18) +  # Moyennes empiriques
+  geom_point(aes(y = pred_W1), color = "red", size = 4, shape = 17) +
+  stat_summary(fun = mean, geom = "point", color = "darkgreen", size = 4, shape = 18) +
   labs(
     title = "Modèle 1 : Durée de séjour selon le bloc horaire",
     subtitle = "Triangles rouges = prédictions | Losanges verts = moyennes observées",
@@ -852,19 +846,17 @@ ggplot(temps_systeme, aes(x = bloc_2h, y = W)) +
     axis.text.x = element_text(angle = 0)
   )
 
-# ✅ NOUVEAU : Diagnostics du modèle 1
-par(mfrow = c(2, 2))
-plot(model1, main = "Diagnostics - Modèle 1")
-par(mfrow = c(1, 1))
+# ✅ CORRECTION : Diagnostics UN PAR UN au lieu de 4 en même temps
+plot(model1, which = 1, main = "Modèle 1 - Résidus vs Valeurs ajustées")
+plot(model1, which = 2, main = "Modèle 1 - Q-Q plot")
+plot(model1, which = 3, main = "Modèle 1 - Scale-Location")
+plot(model1, which = 5, main = "Modèle 1 - Résidus vs Levier")
 
-# -----------------------------------------------------------------------------
-# MODÈLE 2 : W ~ bloc_2h + prioritaire
-# -----------------------------------------------------------------------------
+# ==============================================================================
+# MODÈLE 2
+# ==============================================================================
 
 # Identifier les patients prioritaires
-df1 <- df1 %>%
-  mutate(prioritaire = ifelse(grepl("PRIO", Activity_DETAILS), "Oui", "Non"))
-
 temps_systeme2 <- temps_systeme %>%
   left_join(
     df1 %>%
@@ -874,7 +866,6 @@ temps_systeme2 <- temps_systeme %>%
     by = "ID"
   )
 
-# ✅ NOUVEAU : Fixer "Non" comme référence
 temps_systeme2 <- temps_systeme2 %>%
   mutate(prioritaire = factor(prioritaire, levels = c("Non", "Oui")))
 
@@ -888,11 +879,11 @@ summary(model2)
 # Prédictions
 temps_systeme2$pred_W2 <- predict(model2)
 
-# Visualisation améliorée
+# Visualisation
 ggplot(temps_systeme2, aes(x = bloc_2h, y = W, color = prioritaire)) +
   geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 2) +
-  geom_point(aes(y = pred_W2), shape = 17, size = 4) +  # Prédictions (triangles)
-  geom_line(aes(y = pred_W2, group = prioritaire), linewidth = 1.2) +  # ✅ NOUVEAU : Lignes
+  geom_point(aes(y = pred_W2), shape = 17, size = 4) +
+  geom_line(aes(y = pred_W2, group = prioritaire), linewidth = 1.2) +
   labs(
     title = "Modèle 2 : W ~ bloc_2h + prioritaire",
     subtitle = "Triangles = prédictions | Lignes parallèles montrent l'effet additif",
@@ -907,16 +898,15 @@ ggplot(temps_systeme2, aes(x = bloc_2h, y = W, color = prioritaire)) +
     legend.position = "top"
   )
 
-# ✅ NOUVEAU : Diagnostics du modèle 2
-par(mfrow = c(2, 2))
-plot(model2, main = "Diagnostics - Modèle 2")
-par(mfrow = c(1, 1))
+# Diagnostics UN PAR UN
+plot(model2, which = 1, main = "Modèle 2 - Résidus vs Valeurs ajustées")
+plot(model2, which = 2, main = "Modèle 2 - Q-Q plot")
+plot(model2, which = 3, main = "Modèle 2 - Scale-Location")
+plot(model2, which = 5, main = "Modèle 2 - Résidus vs Levier")
 
-# -----------------------------------------------------------------------------
-# ✅ NOUVEAU : COMPARAISON DES MODÈLES
-# -----------------------------------------------------------------------------
-
-library(broom)
+# ==============================================================================
+# COMPARAISON DES MODÈLES
+# ==============================================================================
 
 models_comparison <- tibble(
   Modèle = c("Modèle 1: W ~ bloc_2h", 
@@ -934,9 +924,9 @@ print(models_comparison)
 # Test de comparaison (ANOVA)
 anova(model1, model2)
 
-# -----------------------------------------------------------------------------
-# ✅ NOUVEAU : MODÈLE 3 AVEC INTERACTION (optionnel, pour aller plus loin)
-# -----------------------------------------------------------------------------
+# ==============================================================================
+# MODÈLE 3 (avec interaction)
+# ==============================================================================
 
 model3 <- lm(W ~ bloc_2h * prioritaire, data = temps_systeme2)
 summary(model3)
@@ -944,7 +934,7 @@ summary(model3)
 # Comparaison des 3 modèles
 anova(model1, model2, model3)
 
-# Visualisation du modèle 3 (si interaction significative)
+# Visualisation du modèle 3
 temps_systeme2$pred_W3 <- predict(model3)
 
 ggplot(temps_systeme2, aes(x = bloc_2h, y = W, color = prioritaire)) +
@@ -965,28 +955,28 @@ ggplot(temps_systeme2, aes(x = bloc_2h, y = W, color = prioritaire)) +
     legend.position = "top"
   )
 
-# -----------------------------------------------------------------------------
-# ✅ NOUVEAU : TABLEAU RÉCAPITULATIF DES COEFFICIENTS
-# -----------------------------------------------------------------------------
+# ==============================================================================
+# ✅ CORRECTION : Tableau des coefficients (besoin de library(broom))
+# ==============================================================================
 
-# Extraire les coefficients des modèles
-coef_table <- bind_rows(
-  tidy(model1) %>% mutate(Modèle = "Modèle 1"),
-  tidy(model2) %>% mutate(Modèle = "Modèle 2")
-) %>%
-  select(Modèle, term, estimate, std.error, p.value) %>%
-  mutate(
-    estimate = round(estimate, 3),
-    std.error = round(std.error, 3),
-    p.value = round(p.value, 4),
-    Significatif = ifelse(p.value < 0.05, "***", "")
-  )
+coef_table <- data.frame(
+  Modèle = c(rep("Modèle 1", length(coef(model1))),
+             rep("Modèle 2", length(coef(model2)))),
+  Terme = c(names(coef(model1)), names(coef(model2))),
+  Estimate = round(c(coef(model1), coef(model2)), 3),
+  Std_Error = round(c(summary(model1)$coefficients[, "Std. Error"],
+                      summary(model2)$coefficients[, "Std. Error"]), 3),
+  P_value = round(c(summary(model1)$coefficients[, "Pr(>|t|)"],
+                    summary(model2)$coefficients[, "Pr(>|t|)"]), 4)
+)
+
+coef_table$Significatif <- ifelse(coef_table$P_value < 0.05, "***", "")
 
 print(coef_table)
 
-# -----------------------------------------------------------------------------
-# ✅ NOUVEAU : INTERPRÉTATION AUTOMATIQUE
-# -----------------------------------------------------------------------------
+# ==============================================================================
+# INTERPRÉTATION
+# ==============================================================================
 
 cat("\n=== INTERPRÉTATION DES RÉSULTATS ===\n\n")
 
@@ -1233,24 +1223,12 @@ legend("topright", legend=c("Tous", "Prioritaires", "Non prioritaires"),
 ```{r}
 #_Entrez votre code R ici_
 
-# ===============================
-# 0. LIBRAIRIES
-# ===============================
 library(readxl)
 library(dplyr)
 library(lubridate)
 library(MASS)
 
-# ===============================
-# 1. IMPORT DES DONNÉES
-# ===============================
 data_raw <- read_excel("Log_Patient_URO_12112015.xlsx")
-
-# Adapter les noms de colonnes si besoin :
-# - patient_id
-# - datetime_begin
-# - datetime_end
-# - prioritaire
 
 # Conversion en format date-heure
 data_raw <- data_raw %>%
@@ -1259,9 +1237,6 @@ data_raw <- data_raw %>%
     datetime_end   = ymd_hms(`Timestamp end`)
   )
 
-# ===============================
-# 2. RECONSTRUCTION DU SÉJOUR PAR PATIENT
-# ===============================
 data_patient <- data_raw %>%
   group_by(ID) %>%
   summarise(
@@ -1280,9 +1255,6 @@ data_patient <- data_raw %>%
 data_patient <- data_patient %>%
   filter(!is.na(duree_sejour), duree_sejour > 0)
 
-# ===============================
-# 3. AJUSTEMENT DES LOIS (MLE)
-# ===============================
 duree <- data_patient$duree_sejour
 
 fit_norm  <- fitdistr(duree, "normal")
@@ -1309,9 +1281,6 @@ AIC_values <- data.frame(
 AIC_values <- AIC_values[order(AIC_values$AIC), ]
 print(AIC_values)
 
-# ===============================
-# 4. DÉCOUPAGE EN TRANCHES DE 30 MIN
-# ===============================
 breaks_30 <- seq(0, ceiling(max(duree)), by = 0.5)
 
 hazard_par_tranche <- function(durees, breaks) {
@@ -1337,14 +1306,8 @@ hazard_par_tranche <- function(durees, breaks) {
   )
 }
 
-# ===============================
-# 5. MODÈLE GLOBAL
-# ===============================
 hazard_global <- hazard_par_tranche(duree, breaks_30)
 
-# ===============================
-# 6. SÉPARATION PAR BLOC D’ARRIVÉE DE 2H
-# ===============================
 data_patient <- data_patient %>%
   mutate(
     heure_arrivee = hour(arrival_time),
@@ -1361,17 +1324,11 @@ hazard_par_bloc <- data_patient %>%
   group_map(~ hazard_par_tranche(.x$duree_sejour, breaks_30),
             .keep = TRUE)
 
-# ===============================
-# 7. SÉPARATION PRIORITAIRES / NON PRIORITAIRES
-# ===============================
 hazard_priorite <- data_patient %>%
   group_by(prioritaire) %>%
   group_map(~ hazard_par_tranche(.x$duree_sejour, breaks_30),
             .keep = TRUE)
 
-# ===============================
-# 8. APERÇU DES RÉSULTATS
-# ===============================
 head(hazard_global)
 hazard_par_bloc
 hazard_priorite
@@ -1440,255 +1397,112 @@ Réponse :
 
 ```{r}
 #_Entrez votre code R ici_
-# ==============================================================================
-# Question 6 : Calculs des niveaux d'occupation et validation des modèles
-# ==============================================================================
 
-library(readxl)
-library(dplyr)
-library(lubridate)
-library(ggplot2)
-library(MASS)
+# Fonction pour calculer l'occupation réelle
+calculer_occupation_reelle <- function(data_patient, debut, fin, pas_temps = 0.1) {
+  temps_seq <- seq(debut, fin, by = pas_temps * 3600)
+  occupation <- sapply(temps_seq, function(t) {
+    sum(data_patient$arrival_time <= t & data_patient$departure_time >= t)
+  })
+  data.frame(temps = temps_seq, occupation = occupation)
+}
 
-# ==============================================================================
-# PARTIE 1 : CHARGEMENT ET PRÉPARATION DES DONNÉES RÉELLES
-# ==============================================================================
-
-# Charger les données
-data_raw <- read_excel("Log_Patient_URO_12112015.xlsx")
-
-# Préparer les données
-data_raw <- data_raw %>%
-  mutate(
-    datetime_begin = ymd_hms(`Timestamp start`),
-    datetime_end   = ymd_hms(`Timestamp end`)
-  )
-
-# Reconstruire les séjours par patient
-data_patient <- data_raw %>%
-  group_by(ID) %>%
-  summarise(
-    arrival_time   = min(datetime_begin, na.rm = TRUE),
-    departure_time = max(datetime_end, na.rm = TRUE),
-    prioritaire = ifelse(any(grepl("PRIO", Activity_DETAILS)), "Oui", "Non"),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    duree_sejour = as.numeric(difftime(departure_time, arrival_time, units = "hours"))
-  ) %>%
-  filter(!is.na(duree_sejour), duree_sejour > 0)
-
-# ==============================================================================
-# PARTIE 2 : CALCUL DU NIVEAU D'OCCUPATION RÉEL (VÉRITÉ TERRAIN)
-# ==============================================================================
-
-# Définir la période d'observation (8h à 18h)
+# Définir la période d'observation
 date_jour <- as.Date("2015-11-12")
 debut_journee <- ymd_hms(paste(date_jour, "08:00:00"))
 fin_journee <- ymd_hms(paste(date_jour, "18:00:00"))
 
-# Fonction pour calculer l'occupation à chaque instant
-calculer_occupation_reelle <- function(data_patient, debut, fin, pas_temps = 0.1) {
-  # Créer une séquence de temps (toutes les 6 minutes = 0.1h)
-  temps_seq <- seq(debut, fin, by = pas_temps * 3600)
-  
-  occupation <- sapply(temps_seq, function(t) {
-    sum(data_patient$arrival_time <= t & data_patient$departure_time >= t)
-  })
-  
-  data.frame(
-    temps = temps_seq,
-    occupation = occupation
-  )
-}
-
+# Calculer l'occupation réelle
 occupation_reelle <- calculer_occupation_reelle(data_patient, debut_journee, fin_journee)
 
-# Calculer l'occupation moyenne réelle
-occupation_moyenne_reelle <- mean(occupation_reelle$occupation)
-cat("Occupation moyenne réelle : ", round(occupation_moyenne_reelle, 2), "\n")
-
-# ==============================================================================
-# PARTIE 3 : EXTRACTION DES PARAMÈTRES DES MODÈLES (Questions précédentes)
-# ==============================================================================
-
-# --- Modèle 1 : Taux d'arrivée par bloc de 2h (Question 2) ---
+# Taux d'arrivée par bloc de 2h
 data_patient <- data_patient %>%
   mutate(
     heure_arrivee = hour(arrival_time),
-    bloc_2h = cut(
-      heure_arrivee,
-      breaks = c(8, 10, 12, 14, 16, 18),
-      right = FALSE,
-      labels = c("[8h-10h[", "[10h-12h[", "[12h-14h[", "[14h-16h[", "[16h-18h["),
-      include.lowest = TRUE
-    )
+    bloc_2h = cut(heure_arrivee, breaks = c(8, 10, 12, 14, 16, 18),
+                  right = FALSE, include.lowest = TRUE)
   )
 
-# Calculer le taux d'arrivée par bloc (lambda)
 lambda_par_bloc <- data_patient %>%
   group_by(bloc_2h) %>%
-  summarise(
-    nb_arrivees = n(),
-    lambda = nb_arrivees / 2  # divisé par 2h
-  )
+  summarise(nb_arrivees = n(), lambda = nb_arrivees / 2)
 
-print(lambda_par_bloc)
-
-# --- Modèle 2 : Durées de séjour selon différentes lois (Question 4 et 5) ---
-
-# Ajustement des lois de durée de séjour
+# Paramètres des lois de durée
 duree <- data_patient$duree_sejour
-
-# Loi Exponentielle
 fit_exp <- fitdistr(duree, "exponential")
-mu_exp <- 1 / fit_exp$estimate["rate"]
-
-# Loi Gamma
 fit_gamma <- fitdistr(duree, "gamma")
-shape_gamma <- fit_gamma$estimate["shape"]
-rate_gamma <- fit_gamma$estimate["rate"]
-
-# Loi Weibull
 fit_weib <- fitdistr(duree, "weibull")
-shape_weib <- fit_weib$estimate["shape"]
-scale_weib <- fit_weib$estimate["scale"]
 
-# Loi Normale (pour comparaison)
-fit_norm <- fitdistr(duree, "normal")
-mean_norm <- fit_norm$estimate["mean"]
-sd_norm <- fit_norm$estimate["sd"]
-
-cat("\n--- Paramètres des lois de durée de séjour ---\n")
-cat("Exponentielle - mu :", round(mu_exp, 3), "h\n")
-cat("Gamma - shape :", round(shape_gamma, 3), ", rate :", round(rate_gamma, 3), "\n")
-cat("Weibull - shape :", round(shape_weib, 3), ", scale :", round(scale_weib, 3), "\n")
-cat("Normale - mean :", round(mean_norm, 3), ", sd :", round(sd_norm, 3), "\n")
-
-# ==============================================================================
-# PARTIE 4 : SIMULATION DE 30 JOURNÉES
-# ==============================================================================
-
-# Fonction pour simuler une journée
+# Fonction pour simuler une journée complète (arrivées + durées)
 simuler_journee <- function(lambda_par_bloc, loi_duree, params_duree) {
-  
   patients <- data.frame()
   
-  # Pour chaque bloc de 2h
   for (i in 1:nrow(lambda_par_bloc)) {
-    bloc <- lambda_par_bloc$bloc_2h[i]
     lambda <- lambda_par_bloc$lambda[i]
-    
-    # Définir les limites du bloc
     debut_bloc <- c(8, 10, 12, 14, 16)[i]
     fin_bloc <- c(10, 12, 14, 16, 18)[i]
     
     # Nombre d'arrivées (Poisson)
-    nb_arrivees <- rpois(1, lambda * 2)  # lambda * 2h
+    nb_arrivees <- rpois(1, lambda * 2)
     
     if (nb_arrivees > 0) {
-      # Générer les temps d'arrivée (uniforme sur le bloc)
-      arrivees <- runif(nb_arrivees, 
-                        min = debut_bloc, 
-                        max = fin_bloc)
+      # Temps d'arrivée uniformes dans le bloc
+      arrivees <- runif(nb_arrivees, min = debut_bloc, max = fin_bloc)
       
-      # Générer les durées de séjour selon la loi spécifiée
+      # Durées selon la loi spécifiée
       if (loi_duree == "exp") {
         durees <- rexp(nb_arrivees, rate = 1/params_duree$mu)
       } else if (loi_duree == "gamma") {
-        durees <- rgamma(nb_arrivees, 
-                        shape = params_duree$shape, 
-                        rate = params_duree$rate)
+        durees <- rgamma(nb_arrivees, shape = params_duree$shape, rate = params_duree$rate)
       } else if (loi_duree == "weibull") {
-        durees <- rweibull(nb_arrivees, 
-                          shape = params_duree$shape, 
-                          scale = params_duree$scale)
-      } else if (loi_duree == "normale") {
-        durees <- rnorm(nb_arrivees, 
-                       mean = params_duree$mean, 
-                       sd = params_duree$sd)
-        durees <- pmax(durees, 0.1)  # éviter les durées négatives
+        durees <- rweibull(nb_arrivees, shape = params_duree$shape, scale = params_duree$scale)
       }
       
-      # Créer le dataframe des patients pour ce bloc
-      patients_bloc <- data.frame(
-        arrivee = arrivees,
-        duree = durees,
-        depart = arrivees + durees
-      )
-      
-      patients <- rbind(patients, patients_bloc)
+      patients <- rbind(patients, data.frame(
+        arrivee = arrivees, duree = durees, depart = arrivees + durees
+      ))
     }
   }
-  
   return(patients)
 }
 
-# Fonction pour calculer l'occupation d'une journée simulée
+# Fonction pour calculer l'occupation d'une simulation
 calculer_occupation_simulation <- function(patients_sim, debut = 8, fin = 18, pas = 0.1) {
   temps_seq <- seq(debut, fin, by = pas)
-  
   occupation <- sapply(temps_seq, function(t) {
     sum(patients_sim$arrivee <= t & patients_sim$depart >= t)
   })
-  
-  data.frame(
-    temps = temps_seq,
-    occupation = occupation
-  )
+  data.frame(temps = temps_seq, occupation = occupation)
 }
 
-# ==============================================================================
-# PARTIE 5 : SIMULATION ET COMPARAISON DES MODÈLES
-# ==============================================================================
-
-set.seed(123)  # Pour reproductibilité
+# Lancer les 30 simulations pour chaque modèle
+set.seed(123)
 n_simulations <- 30
 
-# Initialiser les listes pour stocker les résultats
-resultats_exp <- list()
-resultats_gamma <- list()
-resultats_weib <- list()
-resultats_norm <- list()
+resultats_exp <- lapply(1:n_simulations, function(i) {
+  calculer_occupation_simulation(
+    simuler_journee(lambda_par_bloc, "exp", list(mu = 1/fit_exp$estimate["rate"]))
+  )
+})
 
-# Simuler 30 journées pour chaque modèle
-cat("\n--- Simulation de", n_simulations, "journées ---\n")
+resultats_gamma <- lapply(1:n_simulations, function(i) {
+  calculer_occupation_simulation(
+    simuler_journee(lambda_par_bloc, "gamma", 
+                   list(shape = fit_gamma$estimate["shape"], rate = fit_gamma$estimate["rate"]))
+  )
+})
 
-for (i in 1:n_simulations) {
-  # Modèle Exponentiel
-  patients_exp <- simuler_journee(lambda_par_bloc, "exp", 
-                                  list(mu = mu_exp))
-  resultats_exp[[i]] <- calculer_occupation_simulation(patients_exp)
-  
-  # Modèle Gamma
-  patients_gamma <- simuler_journee(lambda_par_bloc, "gamma", 
-                                    list(shape = shape_gamma, rate = rate_gamma))
-  resultats_gamma[[i]] <- calculer_occupation_simulation(patients_gamma)
-  
-  # Modèle Weibull
-  patients_weib <- simuler_journee(lambda_par_bloc, "weibull", 
-                                   list(shape = shape_weib, scale = scale_weib))
-  resultats_weib[[i]] <- calculer_occupation_simulation(patients_weib)
-  
-  # Modèle Normal
-  patients_norm <- simuler_journee(lambda_par_bloc, "normale", 
-                                   list(mean = mean_norm, sd = sd_norm))
-  resultats_norm[[i]] <- calculer_occupation_simulation(patients_norm)
-}
+resultats_weib <- lapply(1:n_simulations, function(i) {
+  calculer_occupation_simulation(
+    simuler_journee(lambda_par_bloc, "weibull", 
+                   list(shape = fit_weib$estimate["shape"], scale = fit_weib$estimate["scale"]))
+  )
+})
 
-# ==============================================================================
-# PARTIE 6 : CALCUL DES MOYENNES ET INTERVALLES DE CONFIANCE
-# ==============================================================================
-
-# Fonction pour agréger les simulations
+# Agrégation des résultats (moyenne et IC 90%)
 agreger_simulations <- function(liste_resultats) {
-  # Tous les résultats ont les mêmes temps
   temps <- liste_resultats[[1]]$temps
-  
-  # Matrice des occupations
   mat_occupation <- sapply(liste_resultats, function(x) x$occupation)
-  
-  # Calculer moyenne et quantiles
   data.frame(
     temps = temps,
     occupation_moy = rowMeans(mat_occupation),
@@ -1700,287 +1514,60 @@ agreger_simulations <- function(liste_resultats) {
 occupation_exp_agg <- agreger_simulations(resultats_exp)
 occupation_gamma_agg <- agreger_simulations(resultats_gamma)
 occupation_weib_agg <- agreger_simulations(resultats_weib)
-occupation_norm_agg <- agreger_simulations(resultats_norm)
 
-# ==============================================================================
-# PARTIE 7 : VISUALISATION
-# ==============================================================================
-
-# Préparer les données réelles pour le graphique
 occupation_reelle_plot <- occupation_reelle %>%
   mutate(temps_heure = as.numeric(difftime(temps, debut_journee, units = "hours")) + 8)
 
-# Créer le graphique de comparaison
-p <- ggplot() +
-  # Données réelles
-  geom_line(data = occupation_reelle_plot, 
-            aes(x = temps_heure, y = occupation), 
+ggplot() +
+  geom_line(data = occupation_reelle_plot, aes(x = temps_heure, y = occupation), 
             color = "black", linewidth = 1.2) +
-  
-  # Modèle Exponentiel
-  geom_line(data = occupation_exp_agg, 
-            aes(x = temps, y = occupation_moy), 
+  geom_line(data = occupation_exp_agg, aes(x = temps, y = occupation_moy), 
             color = "red", linewidth = 0.8, linetype = "dashed") +
-  geom_ribbon(data = occupation_exp_agg,
-              aes(x = temps, ymin = occupation_q05, ymax = occupation_q95),
+  geom_ribbon(data = occupation_exp_agg, aes(x = temps, ymin = occupation_q05, ymax = occupation_q95),
               fill = "red", alpha = 0.1) +
-  
-  # Modèle Gamma
-  geom_line(data = occupation_gamma_agg, 
-            aes(x = temps, y = occupation_moy), 
+  geom_line(data = occupation_gamma_agg, aes(x = temps, y = occupation_moy), 
             color = "blue", linewidth = 0.8, linetype = "dashed") +
-  geom_ribbon(data = occupation_gamma_agg,
-              aes(x = temps, ymin = occupation_q05, ymax = occupation_q95),
+  geom_ribbon(data = occupation_gamma_agg, aes(x = temps, ymin = occupation_q05, ymax = occupation_q95),
               fill = "blue", alpha = 0.1) +
-  
-  # Modèle Weibull
-  geom_line(data = occupation_weib_agg, 
-            aes(x = temps, y = occupation_moy), 
+  geom_line(data = occupation_weib_agg, aes(x = temps, y = occupation_moy), 
             color = "green", linewidth = 0.8, linetype = "dashed") +
-  geom_ribbon(data = occupation_weib_agg,
-              aes(x = temps, ymin = occupation_q05, ymax = occupation_q95),
+  geom_ribbon(data = occupation_weib_agg, aes(x = temps, ymin = occupation_q05, ymax = occupation_q95),
               fill = "green", alpha = 0.1) +
-  
-  # Modèle Normal
-  geom_line(data = occupation_norm_agg, 
-            aes(x = temps, y = occupation_moy), 
-            color = "orange", linewidth = 0.8, linetype = "dashed") +
-  geom_ribbon(data = occupation_norm_agg,
-              aes(x = temps, ymin = occupation_q05, ymax = occupation_q95),
-              fill = "orange", alpha = 0.1) +
-  
-  labs(
-    title = "Comparaison des niveaux d'occupation : Réel vs Modèles simulés",
-    subtitle = paste("Moyenne de", n_simulations, "simulations avec IC à 90%"),
-    x = "Heure de la journée",
-    y = "Nombre de patients présents",
-    caption = "Ligne pleine = Occupation réelle, Lignes pointillées = Modèles"
-  ) +
-  scale_x_continuous(breaks = seq(8, 18, by = 1)) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 14),
-    legend.position = "bottom"
-  )
+  labs(title = "Occupation : Réel vs Modèles simulés (30 journées, IC 90%)",
+       subtitle = "Noir = Réel | Rouge = Exp | Bleu = Gamma | Vert = Weibull",
+       x = "Heure", y = "Nombre de patients") +
+  scale_x_continuous(breaks = seq(8, 18, by = 2)) +
+  theme_minimal()
 
-# Ajouter une légende manuelle
-p <- p + 
-  annotate("text", x = 16.5, y = max(occupation_reelle_plot$occupation) * 0.95, 
-           label = "Réel", color = "black", fontface = "bold", size = 3.5) +
-  annotate("text", x = 16.5, y = max(occupation_reelle_plot$occupation) * 0.85, 
-           label = "Exp", color = "red", size = 3) +
-  annotate("text", x = 16.5, y = max(occupation_reelle_plot$occupation) * 0.75, 
-           label = "Gamma", color = "blue", size = 3) +
-  annotate("text", x = 16.5, y = max(occupation_reelle_plot$occupation) * 0.65, 
-           label = "Weibull", color = "green", size = 3) +
-  annotate("text", x = 16.5, y = max(occupation_reelle_plot$occupation) * 0.55, 
-           label = "Normal", color = "orange", size = 3)
-
-print(p)
-
-# ==============================================================================
-# PARTIE 8 : MÉTRIQUES DE VALIDATION
-# ==============================================================================
-
-# Fonction pour calculer les métriques
 calculer_metriques <- function(occupation_sim_agg, occupation_reelle_plot) {
-  # Interpoler l'occupation réelle pour matcher les temps de simulation
   occupation_reelle_interp <- approx(
     x = occupation_reelle_plot$temps_heure,
     y = occupation_reelle_plot$occupation,
     xout = occupation_sim_agg$temps
   )$y
   
-  # Erreur Absolue Moyenne (MAE)
-  mae <- mean(abs(occupation_sim_agg$occupation_moy - occupation_reelle_interp), 
-              na.rm = TRUE)
-  
-  # Erreur Quadratique Moyenne (RMSE)
-  rmse <- sqrt(mean((occupation_sim_agg$occupation_moy - occupation_reelle_interp)^2, 
-                    na.rm = TRUE))
-  
-  # Biais sur l'occupation moyenne
+  mae <- mean(abs(occupation_sim_agg$occupation_moy - occupation_reelle_interp), na.rm = TRUE)
+  rmse <- sqrt(mean((occupation_sim_agg$occupation_moy - occupation_reelle_interp)^2, na.rm = TRUE))
   biais <- mean(occupation_sim_agg$occupation_moy, na.rm = TRUE) - 
            mean(occupation_reelle_interp, na.rm = TRUE)
   
-  # Biais relatif (en %)
-  biais_relatif <- (biais / mean(occupation_reelle_interp, na.rm = TRUE)) * 100
-  
-  return(c(MAE = mae, RMSE = rmse, Biais = biais, Biais_rel_pct = biais_relatif))
+  c(MAE = mae, RMSE = rmse, Biais = biais)
 }
 
-# Calculer les métriques pour chaque modèle
-metriques_exp <- calculer_metriques(occupation_exp_agg, occupation_reelle_plot)
-metriques_gamma <- calculer_metriques(occupation_gamma_agg, occupation_reelle_plot)
-metriques_weib <- calculer_metriques(occupation_weib_agg, occupation_reelle_plot)
-metriques_norm <- calculer_metriques(occupation_norm_agg, occupation_reelle_plot)
-
-# Créer un tableau comparatif
 tableau_metriques <- data.frame(
-  Modèle = c("Exponentielle", "Gamma", "Weibull", "Normale"),
-  MAE = c(metriques_exp["MAE"], metriques_gamma["MAE"], 
-          metriques_weib["MAE"], metriques_norm["MAE"]),
-  RMSE = c(metriques_exp["RMSE"], metriques_gamma["RMSE"], 
-           metriques_weib["RMSE"], metriques_norm["RMSE"]),
-  Biais = c(metriques_exp["Biais"], metriques_gamma["Biais"], 
-            metriques_weib["Biais"], metriques_norm["Biais"]),
-  Biais_rel = c(metriques_exp["Biais_rel_pct"], metriques_gamma["Biais_rel_pct"], 
-                metriques_weib["Biais_rel_pct"], metriques_norm["Biais_rel_pct"])
-)
-
-cat("\n===============================================\n")
-cat("TABLEAU COMPARATIF DES MÉTRIQUES DE VALIDATION\n")
-cat("===============================================\n\n")
-print(tableau_metriques, row.names = FALSE, digits = 3)
-
-# Identifier le meilleur modèle
-meilleur_mae <- tableau_metriques$Modèle[which.min(tableau_metriques$MAE)]
-meilleur_rmse <- tableau_metriques$Modèle[which.min(tableau_metriques$RMSE)]
-meilleur_biais <- tableau_metriques$Modèle[which.min(abs(tableau_metriques$Biais))]
-
-cat("\n--- Meilleurs modèles ---\n")
-cat("Meilleur MAE  :", meilleur_mae, "\n")
-cat("Meilleur RMSE :", meilleur_rmse, "\n")
-cat("Meilleur Biais:", meilleur_biais, "\n")
-
-# ==============================================================================
-# PARTIE 9 : SIMULATION AVEC ARRIVÉES CONNUES (Amélioration du modèle)
-# ==============================================================================
-
-cat("\n\n===============================================\n")
-cat("PARTIE 2 : SIMULATION AVEC ARRIVÉES CONNUES\n")
-cat("===============================================\n\n")
-
-# Fonction pour simuler avec les arrivées réelles
-simuler_avec_arrivees_connues <- function(data_patient, loi_duree, params_duree, n_sim = 30) {
-  resultats <- list()
-  
-  for (i in 1:n_sim) {
-    # Utiliser les heures d'arrivée réelles
-    arrivees_reelles <- hour(data_patient$arrival_time) + 
-                        minute(data_patient$arrival_time)/60
-    
-    n_patients <- nrow(data_patient)
-    
-    # Générer uniquement les durées selon la loi
-    if (loi_duree == "exp") {
-      durees <- rexp(n_patients, rate = 1/params_duree$mu)
-    } else if (loi_duree == "gamma") {
-      durees <- rgamma(n_patients, 
-                      shape = params_duree$shape, 
-                      rate = params_duree$rate)
-    } else if (loi_duree == "weibull") {
-      durees <- rweibull(n_patients, 
-                        shape = params_duree$shape, 
-                        scale = params_duree$scale)
-    } else if (loi_duree == "normale") {
-      durees <- rnorm(n_patients, 
-                     mean = params_duree$mean, 
-                     sd = params_duree$sd)
-      durees <- pmax(durees, 0.1)
-    }
-    
-    patients_sim <- data.frame(
-      arrivee = arrivees_reelles,
-      duree = durees,
-      depart = arrivees_reelles + durees
-    )
-    
-    resultats[[i]] <- calculer_occupation_simulation(patients_sim)
-  }
-  
-  return(resultats)
-}
-
-# Simuler avec arrivées connues
-set.seed(456)
-resultats_exp_connues <- simuler_avec_arrivees_connues(data_patient, "exp", 
-                                                        list(mu = mu_exp), n_simulations)
-resultats_gamma_connues <- simuler_avec_arrivees_connues(data_patient, "gamma", 
-                                                          list(shape = shape_gamma, rate = rate_gamma), 
-                                                          n_simulations)
-resultats_weib_connues <- simuler_avec_arrivees_connues(data_patient, "weibull", 
-                                                         list(shape = shape_weib, scale = scale_weib), 
-                                                         n_simulations)
-
-# Agréger les résultats
-occupation_exp_connues_agg <- agreger_simulations(resultats_exp_connues)
-occupation_gamma_connues_agg <- agreger_simulations(resultats_gamma_connues)
-occupation_weib_connues_agg <- agreger_simulations(resultats_weib_connues)
-
-# Visualisation avec arrivées connues
-p2 <- ggplot() +
-  geom_line(data = occupation_reelle_plot, 
-            aes(x = temps_heure, y = occupation), 
-            color = "black", linewidth = 1.2) +
-  geom_line(data = occupation_exp_connues_agg, 
-            aes(x = temps, y = occupation_moy), 
-            color = "red", linewidth = 0.8, linetype = "dashed") +
-  geom_ribbon(data = occupation_exp_connues_agg,
-              aes(x = temps, ymin = occupation_q05, ymax = occupation_q95),
-              fill = "red", alpha = 0.15) +
-  geom_line(data = occupation_gamma_connues_agg, 
-            aes(x = temps, y = occupation_moy), 
-            color = "blue", linewidth = 0.8, linetype = "dashed") +
-  geom_ribbon(data = occupation_gamma_connues_agg,
-              aes(x = temps, ymin = occupation_q05, ymax = occupation_q95),
-              fill = "blue", alpha = 0.15) +
-  geom_line(data = occupation_weib_connues_agg, 
-            aes(x = temps, y = occupation_moy), 
-            color = "green", linewidth = 0.8, linetype = "dashed") +
-  geom_ribbon(data = occupation_weib_connues_agg,
-              aes(x = temps, ymin = occupation_q05, ymax = occupation_q95),
-              fill = "green", alpha = 0.15) +
-  labs(
-    title = "Niveau d'occupation avec ARRIVÉES CONNUES",
-    subtitle = paste("Moyenne de", n_simulations, "simulations avec IC à 90%"),
-    x = "Heure de la journée",
-    y = "Nombre de patients présents"
-  ) +
-  scale_x_continuous(breaks = seq(8, 18, by = 1)) +
-  theme_minimal() +
-  theme(plot.title = element_text(face = "bold", size = 14))
-
-print(p2)
-
-# Calculer les métriques améliorées
-metriques_exp_connues <- calculer_metriques(occupation_exp_connues_agg, occupation_reelle_plot)
-metriques_gamma_connues <- calculer_metriques(occupation_gamma_connues_agg, occupation_reelle_plot)
-metriques_weib_connues <- calculer_metriques(occupation_weib_connues_agg, occupation_reelle_plot)
-
-tableau_metriques_connues <- data.frame(
   Modèle = c("Exponentielle", "Gamma", "Weibull"),
-  MAE = c(metriques_exp_connues["MAE"], metriques_gamma_connues["MAE"], 
-          metriques_weib_connues["MAE"]),
-  RMSE = c(metriques_exp_connues["RMSE"], metriques_gamma_connues["RMSE"], 
-           metriques_weib_connues["RMSE"]),
-  Biais = c(metriques_exp_connues["Biais"], metriques_gamma_connues["Biais"], 
-            metriques_weib_connues["Biais"]),
-  Biais_rel = c(metriques_exp_connues["Biais_rel_pct"], 
-                metriques_gamma_connues["Biais_rel_pct"], 
-                metriques_weib_connues["Biais_rel_pct"])
+  MAE = c(calculer_metriques(occupation_exp_agg, occupation_reelle_plot)["MAE"],
+          calculer_metriques(occupation_gamma_agg, occupation_reelle_plot)["MAE"],
+          calculer_metriques(occupation_weib_agg, occupation_reelle_plot)["MAE"]),
+  RMSE = c(calculer_metriques(occupation_exp_agg, occupation_reelle_plot)["RMSE"],
+           calculer_metriques(occupation_gamma_agg, occupation_reelle_plot)["RMSE"],
+           calculer_metriques(occupation_weib_agg, occupation_reelle_plot)["RMSE"]),
+  Biais = c(calculer_metriques(occupation_exp_agg, occupation_reelle_plot)["Biais"],
+            calculer_metriques(occupation_gamma_agg, occupation_reelle_plot)["Biais"],
+            calculer_metriques(occupation_weib_agg, occupation_reelle_plot)["Biais"])
 )
 
-cat("\n=======================================================\n")
-cat("MÉTRIQUES AVEC ARRIVÉES CONNUES (amélioration)\n")
-cat("=======================================================\n\n")
-print(tableau_metriques_connues, row.names = FALSE, digits = 3)
-
-# Comparaison des gains
-cat("\n--- Gains en précision (réduction du MAE) ---\n")
-cat("Exponentielle :", 
-    round((metriques_exp["MAE"] - metriques_exp_connues["MAE"]) / metriques_exp["MAE"] * 100, 1), 
-    "%\n")
-cat("Gamma        :", 
-    round((metriques_gamma["MAE"] - metriques_gamma_connues["MAE"]) / metriques_gamma["MAE"] * 100, 1), 
-    "%\n")
-cat("Weibull      :", 
-    round((metriques_weib["MAE"] - metriques_weib_connues["MAE"]) / metriques_weib["MAE"] * 100, 1), 
-    "%\n")
-
-cat("\n===============================================\n")
-cat("FIN DE L'ANALYSE\n")
-cat("===============================================\n")
+print(tableau_metriques, row.names = FALSE, digits = 3)
 ```
 
 Refaites ce travail d'estimation de l'occupation en considérant les
