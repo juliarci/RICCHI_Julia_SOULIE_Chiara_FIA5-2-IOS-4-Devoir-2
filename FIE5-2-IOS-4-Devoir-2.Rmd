@@ -417,6 +417,51 @@ samples_nhpp %>%
   theme_minimal()
 ```
 
+#### Interprétation des résultats :
+
+Ce graphique représente plusieurs trajectoires simulées de la fonction
+de comptage cumulée d’un processus de Poisson non homogène (NHPP) au
+cours du temps, exprimé en heures. Chaque courbe colorée correspond à
+une réalisation possible des arrivées, ce qui explique les écarts
+observés entre elles et traduit le caractère aléatoire du processus.
+Toutes les trajectoires sont croissantes, passant progressivement de 0 %
+à 100 % d’arrivées, puisque les événements s’accumulent sans jamais
+diminuer. La pente des courbes varie selon les périodes : elle est plus
+faible au début de l’intervalle temporel, s’accentue nettement au
+milieu, indiquant une intensité d’arrivée plus élevée, puis ralentit en
+fin de période lorsque la totalité des arrivées est presque atteinte.
+L’ensemble met ainsi en évidence une intensité dépendante du temps,
+caractéristique principale d’un processus de Poisson non homogène, tout
+en montrant la variabilité naturelle entre différentes réalisations
+autour d’une tendance moyenne commune.
+
+Le second graphique montre la distribution du nombre d’arrivées par
+tranche horaire, en comparant un modèle simulé NHPP aux données réelles.
+Chaque boxplot résume la variabilité des arrivées simulées pour une
+heure donnée (médiane, dispersion, valeurs extrêmes), tandis que le
+losange indique la valeur observée. On voit une augmentation progressive
+des arrivées en matinée entre 8h et 12h, un creux marqué autour de
+12h–14h, puis une reprise nette en milieu d’après-midi (14h–16h), avant
+une diminution en fin de journée. Globalement, les losanges rouges se
+situent souvent à l’intérieur ou proches des boxplots, ce qui suggère
+que le modèle reproduit correctement le niveau et la variabilité des
+arrivées selon l’heure, même si quelques écarts apparaissent
+ponctuellement, notamment sur la tranche horaire de 10h-11h ou la donné
+réelle est bien plus haute que celles simulées.
+
+En conclusion, l’analyse conjointe des trajectoires cumulées et des
+distributions horaires montre que le processus de Poisson non homogène
+constitue une modélisation globalement pertinente des arrivées
+observées. Le NHPP capture correctement la dépendance temporelle de
+l’intensité, en reproduisant à la fois la dynamique globale des arrivées
+et les variations marquées selon les tranches horaires, notamment le
+creux de la mi-journée et le pic de l’après-midi. La proximité des
+données réelles avec les distributions simulées confirme la capacité du
+modèle à rendre compte de la variabilité naturelle du phénomène.
+Néanmoins, certains écarts ponctuels, comme la sous-estimation des
+arrivées sur la tranche 10h–11h, suggèrent que l’intensité pourrait être
+affinée localement afin d’améliorer l’adéquation du modèle.
+
 ### Question 3) Modélisation de la durée de séjour par une distribution (/3)
 
 A l'aide de la documentation "Ricci-distributions-en.pdf" fournie,
@@ -762,7 +807,7 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 library(readxl)
-library(broom)  # ✅ IMPORTANT : Charger broom au début !
+library(broom)  
 
 
 # Chargement des données
@@ -819,10 +864,6 @@ temps_systeme <- temps_systeme %>%
 head(temps_systeme)
 summary(temps_systeme$W)
 
-# ==============================================================================
-# MODÈLE 1
-# ==============================================================================
-
 model1 <- lm(W ~ bloc_2h, data = temps_systeme)
 summary(model1)
 
@@ -846,15 +887,10 @@ ggplot(temps_systeme, aes(x = bloc_2h, y = W)) +
     axis.text.x = element_text(angle = 0)
   )
 
-# ✅ CORRECTION : Diagnostics UN PAR UN au lieu de 4 en même temps
 plot(model1, which = 1, main = "Modèle 1 - Résidus vs Valeurs ajustées")
 plot(model1, which = 2, main = "Modèle 1 - Q-Q plot")
 plot(model1, which = 3, main = "Modèle 1 - Scale-Location")
 plot(model1, which = 5, main = "Modèle 1 - Résidus vs Levier")
-
-# ==============================================================================
-# MODÈLE 2
-# ==============================================================================
 
 # Identifier les patients prioritaires
 temps_systeme2 <- temps_systeme %>%
@@ -904,10 +940,6 @@ plot(model2, which = 2, main = "Modèle 2 - Q-Q plot")
 plot(model2, which = 3, main = "Modèle 2 - Scale-Location")
 plot(model2, which = 5, main = "Modèle 2 - Résidus vs Levier")
 
-# ==============================================================================
-# COMPARAISON DES MODÈLES
-# ==============================================================================
-
 models_comparison <- tibble(
   Modèle = c("Modèle 1: W ~ bloc_2h", 
              "Modèle 2: W ~ bloc_2h + prioritaire"),
@@ -923,10 +955,6 @@ print(models_comparison)
 
 # Test de comparaison (ANOVA)
 anova(model1, model2)
-
-# ==============================================================================
-# MODÈLE 3 (avec interaction)
-# ==============================================================================
 
 model3 <- lm(W ~ bloc_2h * prioritaire, data = temps_systeme2)
 summary(model3)
@@ -955,10 +983,6 @@ ggplot(temps_systeme2, aes(x = bloc_2h, y = W, color = prioritaire)) +
     legend.position = "top"
   )
 
-# ==============================================================================
-# ✅ CORRECTION : Tableau des coefficients (besoin de library(broom))
-# ==============================================================================
-
 coef_table <- data.frame(
   Modèle = c(rep("Modèle 1", length(coef(model1))),
              rep("Modèle 2", length(coef(model2)))),
@@ -974,9 +998,6 @@ coef_table$Significatif <- ifelse(coef_table$P_value < 0.05, "***", "")
 
 print(coef_table)
 
-# ==============================================================================
-# INTERPRÉTATION
-# ==============================================================================
 
 cat("\n=== INTERPRÉTATION DES RÉSULTATS ===\n\n")
 
@@ -1167,8 +1188,16 @@ $$
 
 ```{r}
 #_Entrez votre code R ici_
-# Charger le package MASS pour fitdistr
 library(MASS)
+
+# Séparer les durées par priorité
+duree_prio <- data_patient %>%
+  filter(prioritaire == "Oui") %>%
+  pull(duree_sejour)
+
+duree_non_prio <- data_patient %>%
+  filter(prioritaire == "Non") %>%
+  pull(duree_sejour)
 
 # Ajustement Gamma pour chaque groupe
 fit_gamma_all       <- fitdistr(duree, "gamma")
@@ -1185,11 +1214,17 @@ rate_prio  <- fit_gamma_prio$estimate["rate"]
 shape_non_prio <- fit_gamma_non_prio$estimate["shape"]
 rate_non_prio  <- fit_gamma_non_prio$estimate["rate"]
 
+# Afficher les paramètres
+cat("=== PARAMÈTRES DES LOIS GAMMA ===\n")
+cat("Tous les patients : shape =", round(shape_all, 3), ", rate =", round(rate_all, 3), "\n")
+cat("Prioritaires : shape =", round(shape_prio, 3), ", rate =", round(rate_prio, 3), "\n")
+cat("Non prioritaires : shape =", round(shape_non_prio, 3), ", rate =", round(rate_non_prio, 3), "\n\n")
+
 # Définition de la fonction hazard pour la Gamma
 hazard_gamma <- function(t, shape, rate) {
-  f <- dgamma(t, shape=shape, rate=rate)   # densité
-  S <- 1 - pgamma(t, shape=shape, rate=rate) # survie
-  return(f / S)
+  f <- dgamma(t, shape=shape, rate=rate)          # densité f(t)
+  S <- 1 - pgamma(t, shape=shape, rate=rate)      # survie S(t) = 1-F(t)
+  return(f / S)                                     # μ(t) = f(t)/S(t)
 }
 
 # Vecteur de temps pour le calcul
@@ -1202,15 +1237,33 @@ haz_non_prio  <- hazard_gamma(t_vals, shape_non_prio, rate_non_prio)
 
 # Tracé du taux de défaillance
 plot(t_vals, haz_all, type="l", col="black", lwd=2,
-     ylab="Taux de défaillance μ(t)", xlab="Temps t",
-     main="Taux de défaillance - loi Gamma")
+     ylab="Taux de défaillance μ(t)", xlab="Temps t (heures)",
+     main="Taux de défaillance - loi Gamma",
+     ylim=c(0, max(c(haz_all, haz_prio, haz_non_prio), na.rm=TRUE)))
 lines(t_vals, haz_prio, col="red", lwd=2)
 lines(t_vals, haz_non_prio, col="blue", lwd=2)
-legend("topright", legend=c("Tous", "Prioritaires", "Non prioritaires"),
+legend("topright", 
+       legend=c("Tous", "Prioritaires", "Non prioritaires"),
        col=c("black","red","blue"), lwd=2)
 
 
 ```
+
+**Analyse du taux de défaillance :**
+
+Le graphique montre que : - **Patients prioritaires** (rouge) : taux de
+sortie croissant au début puis plateau → Ils sortent plus lentement au
+début (examens longs) puis accélère
+
+-   **Patients non-prioritaires** (bleu) : taux augmente rapidement puis
+    se stabilise → Consultations plus rapides, sortie plus homogène dans
+    le temps
+
+-   **Tous les patients** (noir) : comportement intermédiaire
+
+Contrairement à la loi exponentielle (taux constant), la loi Gamma
+permet de capturer cette dynamique : peu de sorties au début, puis
+accélération, puis stabilisation.
 
 -   De construire et d'analyser un modèle (calcul de moyennes simples)
     qui estime ce taux de risque par tranche de 30min
@@ -1223,82 +1276,30 @@ legend("topright", legend=c("Tous", "Prioritaires", "Non prioritaires"),
 ```{r}
 #_Entrez votre code R ici_
 
-library(readxl)
+library(ggplot2)
 library(dplyr)
-library(lubridate)
-library(MASS)
 
-data_raw <- read_excel("Log_Patient_URO_12112015.xlsx")
-
-# Conversion en format date-heure
-data_raw <- data_raw %>%
-  mutate(
-    datetime_begin = ymd_hms(`Timestamp start`),
-    datetime_end   = ymd_hms(`Timestamp end`)
-  )
-
-data_patient <- data_raw %>%
-  group_by(ID) %>%
-  summarise(
-    arrival_time   = min(datetime_begin, na.rm = TRUE),
-    departure_time = max(datetime_end, na.rm = TRUE),
-    prioritaire = ifelse(any(grepl("PRIO", Activity_DETAILS)), "Oui", "Non"),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    duree_sejour = as.numeric(
-      difftime(departure_time, arrival_time, units = "hours")
-    )
-  )
-
-# Nettoyage
-data_patient <- data_patient %>%
-  filter(!is.na(duree_sejour), duree_sejour > 0)
-
-duree <- data_patient$duree_sejour
-
-fit_norm  <- fitdistr(duree, "normal")
-fit_exp   <- fitdistr(duree, "exponential")
-fit_gamma <- fitdistr(duree, "gamma")
-fit_weib  <- fitdistr(duree, "weibull")
-
-# --- Calcul manuel de l’AIC
-AIC_fitdistr <- function(fit) {
-  k <- length(fit$estimate)
-  -2 * fit$loglik + 2 * k
-}
-
-AIC_values <- data.frame(
-  Distribution = c("Normale", "Exponentielle", "Gamma", "Weibull"),
-  AIC = c(
-    AIC_fitdistr(fit_norm),
-    AIC_fitdistr(fit_exp),
-    AIC_fitdistr(fit_gamma),
-    AIC_fitdistr(fit_weib)
-  )
-)
-
-AIC_values <- AIC_values[order(AIC_values$AIC), ]
-print(AIC_values)
-
+# Définir les tranches de 30min = 0.5h
 breaks_30 <- seq(0, ceiling(max(duree)), by = 0.5)
 
+# Fonction pour calculer le hazard par tranche
 hazard_par_tranche <- function(durees, breaks) {
-
   n <- length(breaks) - 1
   hazard <- numeric(n)
-
+  
   for (i in 1:n) {
-
     debut <- breaks[i]
     fin   <- breaks[i + 1]
-
+    
+    # Nombre à risque = encore présents au début de la tranche
     a_risque <- sum(durees >= debut)
+    # Nombre de sorties dans la tranche
     sorties  <- sum(durees >= debut & durees < fin)
-
+    
+    # Taux de risque = sorties / à risque
     hazard[i] <- ifelse(a_risque > 0, sorties / a_risque, NA)
   }
-
+  
   data.frame(
     debut = breaks[-length(breaks)],
     fin   = breaks[-1],
@@ -1306,8 +1307,20 @@ hazard_par_tranche <- function(durees, breaks) {
   )
 }
 
+# === 1. TAUX DE RISQUE GLOBAL ===
 hazard_global <- hazard_par_tranche(duree, breaks_30)
 
+ggplot(hazard_global, aes(x = debut, y = hazard)) +
+  geom_line(linewidth = 1, color = "black") +
+  geom_point(size = 2, color = "black") +
+  labs(
+    title = "Taux de risque de sortie – Global (par tranches de 30min)",
+    x = "Temps de séjour (heures)",
+    y = "Taux de risque empirique"
+  ) +
+  theme_minimal()
+
+# === 2. TAUX DE RISQUE PAR BLOC D'ARRIVÉE ===
 data_patient <- data_patient %>%
   mutate(
     heure_arrivee = hour(arrival_time),
@@ -1315,70 +1328,68 @@ data_patient <- data_patient %>%
       heure_arrivee,
       breaks = c(8, 10, 12, 14, 16, 18),
       right = FALSE,
-      include.lowest = TRUE
+      include.lowest = TRUE,
+      labels = c("[8h-10h[", "[10h-12h[", "[12h-14h[", "[14h-16h[", "[16h-18h[")
     )
   )
 
 hazard_par_bloc <- data_patient %>%
   group_by(bloc_2h) %>%
-  group_map(~ hazard_par_tranche(.x$duree_sejour, breaks_30),
-            .keep = TRUE)
+  group_map(~ hazard_par_tranche(.x$duree_sejour, breaks_30), .keep = TRUE)
 
-hazard_priorite <- data_patient %>%
-  group_by(prioritaire) %>%
-  group_map(~ hazard_par_tranche(.x$duree_sejour, breaks_30),
-            .keep = TRUE)
-
-head(hazard_global)
-hazard_par_bloc
-hazard_priorite
-
-
-library(ggplot2)
-
-ggplot(hazard_global, aes(x = debut, y = hazard)) +
-  geom_line(size = 1) +
-  labs(
-    title = "Taux de risque de sortie – Global",
-    x = "Temps de séjour (heures)",
-    y = "Taux de risque"
-  ) +
-  theme_minimal()
-
-hazard_bloc_df <- bind_rows(
-  hazard_par_bloc,
-  .id = "bloc"
-)
-
-# Récupérer les vrais noms des blocs
-hazard_bloc_df$bloc <- levels(data_patient$bloc_2h)[as.numeric(hazard_bloc_df$bloc)]
+# Combiner en un seul dataframe
+hazard_bloc_df <- bind_rows(hazard_par_bloc, .id = "bloc_id")
+hazard_bloc_df$bloc <- levels(data_patient$bloc_2h)[as.numeric(hazard_bloc_df$bloc_id)]
 
 ggplot(hazard_bloc_df, aes(x = debut, y = hazard, color = bloc)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   labs(
-    title = "Taux de risque par bloc d’arrivée",
+    title = "Taux de risque par bloc d'arrivée (30min)",
     x = "Temps de séjour (heures)",
     y = "Taux de risque",
-    color = "Bloc d’arrivée"
+    color = "Bloc d'arrivée"
   ) +
   theme_minimal()
 
-hazard_prior_df <- bind_rows(
-  hazard_priorite,
-  .id = "prioritaire"
-)
+# === 3. TAUX DE RISQUE PAR PRIORITÉ ===
+hazard_priorite <- data_patient %>%
+  group_by(prioritaire) %>%
+  group_map(~ hazard_par_tranche(.x$duree_sejour, breaks_30), .keep = TRUE)
+
+hazard_prior_df <- bind_rows(hazard_priorite, .id = "prioritaire_id")
+hazard_prior_df$prioritaire <- ifelse(hazard_prior_df$prioritaire_id == "1", "Non", "Oui")
 
 ggplot(hazard_prior_df, aes(x = debut, y = hazard, color = prioritaire)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1.5) +
   labs(
-    title = "Taux de risque – Patients prioritaires vs non prioritaires",
+    title = "Taux de risque – Patients prioritaires vs non prioritaires (30min)",
     x = "Temps de séjour (heures)",
     y = "Taux de risque",
     color = "Prioritaire"
   ) +
+  scale_color_manual(values = c("Non" = "blue", "Oui" = "red")) +
   theme_minimal()
 
 ```
+
+**Interprétation des taux de risque par tranches :**
+
+**Global** : Le taux de sortie augmente progressivement, avec un pic
+vers 2-3h de séjour. Peu de patients sortent dans la première heure
+(temps minimum de consultation).
+
+**Par bloc d'arrivée** : Les patients arrivant tôt le matin ont des taux
+de sortie plus étalés dans le temps, tandis que ceux arrivant
+l'après-midi sortent plus rapidement (probablement consultations plus
+courtes en fin de journée).
+
+**Par priorité** : - Patients prioritaires : taux plus faible et plus
+étalé → séjours plus longs - Patients non-prioritaires : taux plus
+concentré → séjours plus courts et homogènes
+
+Ces observations confirment qu'un modèle Gamma avec des paramètres
+différents selon la priorité serait pertinent pour simuler finement les
+durées de séjour.
 
 ### Question 6) Calculs des niveaux d'occupation et validation des modèles (/5)
 
@@ -1574,7 +1585,16 @@ Refaites ce travail d'estimation de l'occupation en considérant les
 arrivées des patients connues et visualiser et analyser les gains en
 terme de qualité de prédiction.
 
-Réponse :
+**Analyse des résultats :**
+
+Le modèle **Gamma** donne les meilleures performances avec le MAE le
+plus faible. Les intervalles de confiance capturent bien la variabilité.
+On observe plus d'écart en fin de journée car certains patients partent
+après 18h (effet de bord).
+
+Les modèles Exponentiel et Weibull donnent des résultats proches mais
+moins bons que Gamma, ce qui confirme le choix fait à la Question 3
+(AIC). Réponse :
 
 *Entrez votre texte ici*
 
@@ -1628,10 +1648,6 @@ occupation_exp_connues_agg <- agreger_simulations(resultats_exp_connues)
 occupation_gamma_connues_agg <- agreger_simulations(resultats_gamma_connues)
 occupation_weib_connues_agg <- agreger_simulations(resultats_weib_connues)
 
-# ==============================================================================
-# VISUALISATION
-# ==============================================================================
-
 ggplot() +
   geom_line(data = occupation_reelle_plot, aes(x = temps_heure, y = occupation), 
             color = "black", linewidth = 1.2) +
@@ -1655,10 +1671,6 @@ ggplot() +
        x = "Heure", y = "Nombre de patients") +
   scale_x_continuous(breaks = seq(8, 18, by = 2)) +
   theme_minimal()
-
-# ==============================================================================
-# MÉTRIQUES ET COMPARAISON
-# ==============================================================================
 
 # Métriques avec arrivées connues
 metriques_exp_connues <- calculer_metriques(occupation_exp_connues_agg, occupation_reelle_plot)
@@ -1728,6 +1740,21 @@ print(gains, row.names = FALSE, digits = 1)
 Notes : Ici, on ne sépare pas les données en données d'entraînement et de test pour des raisons pratiques de quantité de données mais c'est un point à tenir en compte dans une vrai validation de modèle.
 ```
 
+**Analyse des gains :**
+
+En utilisant les arrivées réelles, on gagne environ 30-50% de précision
+(réduction du MAE). Cela montre que la variabilité du processus
+d'arrivée est la principale source d'erreur.
+
+Les intervalles de confiance sont beaucoup plus étroits, ce qui rend les
+prédictions plus fiables. En pratique, cela signifie que si on connaît
+les arrivées de la journée (via un système de RDV ou de tracking), on
+peut prédire l'occupation future avec bien plus de précision.
+
+**Application pratique** : Un système de suivi en temps réel des
+arrivées permettrait d'anticiper les pics d'occupation et d'ajuster les
+ressources (personnel, salles).
+
 ### Question bonus (/1) :
 
 Quelles sont les notations de Kendall des différents modèles de "file
@@ -1736,3 +1763,42 @@ d'attente" que vous avez implémentés ? (Justifiez)
 ```         
 Note :  On est ici sur un cas spécial le modèle de file d'attente est sans file d'attente
 ```
+
+La notation de Kendall pour les files d'attente est : **A/B/c/K/N/D**
+
+Où : - A = processus d'arrivée - B = processus de service - c = nombre
+de serveurs - K = capacité du système - N = population source - D =
+discipline de la file
+
+**Pour nos modèles :**
+
+Comme indiqué, on est dans un cas spécial **sans file d'attente** (les
+patients sont directement pris en charge à l'arrivée, pas d'attente pour
+être servi).
+
+**Modèle avec arrivées simulées :** - Arrivées : Poisson non-homogène
+(taux variable par bloc de 2h) → **Mt/G/∞** - Service : Gamma, Weibull,
+ou Exponentielle selon le modèle - Serveurs : ∞ (ou suffisamment
+nombreux pour éviter l'attente) - Pas de limite de capacité, population
+infinie
+
+**Notation** : **Mt/G/∞** ou **Mt/Gamma/∞**, **Mt/Weibull/∞**,
+**Mt/Exp/∞**
+
+Le **Mt** indique un processus de Poisson non-homogène (taux dépend du
+temps t). Le **G** (General) indique une distribution générale de
+service. Le **∞** indique un nombre illimité de serveurs (pas
+d'attente).
+
+**Modèle avec arrivées connues :** - Arrivées : Déterministes (connues à
+l'avance) → **D/G/∞** - Service : idem ci-dessus - Serveurs : ∞
+
+**Notation** : **D/Gamma/∞**, **D/Weibull/∞**, **D/Exp/∞**
+
+Le **D** (Deterministic) indique que les arrivées sont déterministes et
+connues.
+
+**Justification :** - Pas de file d'attente car chaque patient est pris
+en charge immédiatement - Le système a une capacité suffisante
+(médecins, salles) pour éviter l'attente - C'est cohérent avec un
+service de consultations externes où les RDV sont planifiés
