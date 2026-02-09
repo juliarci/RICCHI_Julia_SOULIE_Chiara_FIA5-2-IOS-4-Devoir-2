@@ -1024,9 +1024,52 @@ if (p_prio < 0.05) {
   cat(sprintf("- Cet effet n'est pas significatif (p = %.4f)\n", p_prio))
 }
 
-cat("\n- Conclusion: Les patients prioritaires restent significativement plus longtemps,\n")
-cat("  probablement en raison de la complexité de leurs cas (examens complémentaires).\n")
 ```
+
+Nous avons étudié l’effet de l’heure d’arrivée et du statut prioritaire
+sur la durée de séjour en analysant trois modèles successifs.
+
+Le modèle 1 considère uniquement le bloc horaire d’arrivée. Le graphique
+associé montre une légère augmentation de la durée moyenne entre le
+matin et le milieu d’après-midi, suivie d’une stabilisation en fin de
+journée. Cependant, cette tendance reste faible par rapport à la
+dispersion très importante des durées individuelles à l’intérieur de
+chaque bloc. Les valeurs prédites par le modèle coïncident quasiment
+avec les moyennes observées, indiquant que le modèle reproduit surtout
+la tendance centrale sans capter la variabilité individuelle. L’heure
+d’arrivée seule explique donc très peu la durée de séjour.
+
+L’ajout du statut prioritaire sur le modèle 2 montre que les courbes des
+patients prioritaires et non prioritaires sont presque parallèles, avec
+un léger décalage vertical. Les patients prioritaires présentent une
+durée moyenne légèrement supérieure, mais cet écart reste très faible et
+largement masqué par la dispersion des données. Visuellement et
+statistiquement, le statut prioritaire n’améliore pas significativement
+le pouvoir explicatif du modèle.
+
+En incluant l’interaction entre bloc horaire et statut prioritaire sur
+le modèle 3, on observe des différences temporaires entre les deux
+groupes : la courbe des patients prioritaires se rapproche puis dépasse
+celle des non-prioritaires sur certains créneaux horaires, avant de se
+rejoindre à nouveau. Néanmoins, ces variations restent faibles par
+rapport à la variabilité individuelle. L’interaction n’apporte donc
+qu’une explication marginale supplémentaire et ne modifie pas la
+conclusion générale : l’heure d’arrivée et le statut prioritaire
+n’expliquent qu’une part minoritaire de la durée de séjour.
+
+Les trois modèles montrent de manière cohérente que :
+
+La variabilité intra-bloc domine largement les différences moyennes
+entre groupes. Ni l’heure d’arrivée ni le statut prioritaire, ni leur
+interaction, ne structurent réellement la durée de séjour.
+
+D’autres facteurs non inclus dans les modèles (complexité des cas, actes
+réalisés, organisation interne) sont probablement des principaux
+déterminants du temps passé dans le système.
+
+Ces observations sont cohérentes avec le faible R² de chaque modèle et
+soulignent le rôle secondaire de l’heure d’arrivée et du statut
+prioritaire dans l’explication des durées de séjour.
 
 ```{r}
 library(dplyr)
@@ -1056,6 +1099,8 @@ summary(model1)
 temps_systeme$pred_W1 <- predict(model1)
 ```
 
+L’analyse du modèle linéaire simple de la durée de séjour en fonction du bloc horaire d’arrivée montre que la durée moyenne pour le bloc 8h–10h est de 0,94 h (Intercept, p = 0,044). Par rapport à ce bloc de référence, les durées moyennes augmentent de 0,63 h pour 10h–12h (p = 0,23), 0,76 h pour 12h–14h (p = 0,19), 1,14 h pour 14h–16h (p = 0,046) et 1,01 h pour 16h–18h (p = 0,063). Seul le bloc 14h–16h est significativement différent du bloc de référence, tandis que 16h–18h montre une tendance. Le modèle explique peu la variabilité globale (R² = 0,081), ce qui, combiné à des résidus très dispersés (de -1,57 à 3,80 h), indique que l’heure d’arrivée a un effet faible sur la durée de séjour et que la variabilité individuelle domine largement.
+
 ```{r}
 library(ggplot2)
 
@@ -1071,6 +1116,9 @@ ggplot(temps_systeme, aes(x = bloc_2h, y = W)) +
   theme_minimal()
 
 ```
+
+Les points verts du graphique représentent la durée moyenne de séjour par bloc horaire. On observe environ 1 h pour le bloc 8h–10h, 1,5 h pour 10h–12h et 12h–14h, et un peu plus de 2 h pour 14h–16h, avec environ 2 h également pour 16h–18h. Quelques valeurs atypiques ressortent : un patient proche de 6 h pour le bloc 14h–16h, et deux patients autour de 5 h pour 16h–18h. En dehors de ces cas isolés, les durées se regroupent autour de la moyenne, montrant que malgré la présence de quelques extrêmes, la majorité des patients reste concentrée autour de la tendance centrale.
+
 
 Refaites un deuxième modèle linéaire intégrant une variable catégorielle
 qui indique si le patient est prioritaire.
@@ -1100,6 +1148,8 @@ summary(model2)
 temps_systeme2$pred_W2 <- predict(model2)
 ```
 
+L’analyse du modèle incluant le bloc horaire et le statut prioritaire montre que la durée moyenne de séjour pour un patient non prioritaire arrivé entre 8h et 10h est d’environ 0,93 h (p = 0,048). Les durées augmentent légèrement pour les blocs suivants : +0,63 h pour 10h–12h (p = 0,24), +0,76 h pour 12h–14h (p = 0,20), +1,13 h pour 14h–16h (p = 0,050) et +1,01 h pour 16h–18h (p = 0,066). En revanche, le statut prioritaire n’a pratiquement aucun effet sur la durée de séjour (+0,025 h, p = 0,936). Le modèle explique très peu la variabilité observée (R² = 0,081, ajusté = 0,002), et les résidus montrent une forte dispersion individuelle (-1,56 à 3,78 h). Globalement, ces résultats confirment que ni l’heure d’arrivée ni le statut prioritaire ne permettent de prédire de manière significative la durée de séjour, la variabilité individuelle restant largement dominante.
+
 ```{r}
 temps_systeme2 <- temps_systeme2 %>%
   mutate(prioritaire = factor(prioritaire, levels = c("Oui", "Non")))
@@ -1118,6 +1168,8 @@ ggplot(temps_systeme2, aes(x = bloc_2h, y = W, color = prioritaire)) +
 
 
 ```
+
+Le dernier graphique montre que la durée de séjour moyenne est très similaire pour les patients prioritaires et non prioritaires, quel que soit le bloc horaire d’arrivée. On observe que la durée moyenne reste autour de 1 h pour le matin (8h–10h), augmente légèrement vers 1,5 h pour 10h–14h, puis atteint un peu plus de 2 h pour 14h–16h, avant de redescendre vers 2 h pour 16h–18h. Quelques valeurs extrêmes apparaissent, comme un patient proche de 6 h pour le bloc 14h–16h, mais elles ne modifient pas la tendance générale. Globalement, les courbes des patients prioritaires et non prioritaires se superposent, ce qui confirme que le statut prioritaire n’influence pas de manière significative le temps passé dans le service, et que la variabilité individuelle reste largement dominante.
 
 ### Question 5) Modélisation de la durée de séjour par un taux de départ (/3)
 
@@ -1251,15 +1303,15 @@ legend("topright",
 
 **Analyse du taux de défaillance :**
 
-Le graphique montre que : - **Patients prioritaires** (rouge) : taux de
+Le graphique montre que : - Patients prioritaires (rouge) : taux de
 sortie croissant au début puis plateau → Ils sortent plus lentement au
 début (examens longs) puis accélère
 
--   **Patients non-prioritaires** (bleu) : taux augmente rapidement puis
+-   Patients non-prioritaires (bleu) : taux augmente rapidement puis
     se stabilise → Consultations plus rapides, sortie plus homogène dans
     le temps
 
--   **Tous les patients** (noir) : comportement intermédiaire
+-   Tous les patients (noir) : comportement intermédiaire
 
 Contrairement à la loi exponentielle (taux constant), la loi Gamma
 permet de capturer cette dynamique : peu de sorties au début, puis
