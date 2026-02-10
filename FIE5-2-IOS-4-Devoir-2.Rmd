@@ -445,9 +445,9 @@ des arrivées en matinée entre 8h et 12h, un creux marqué autour de
 une diminution en fin de journée. Globalement, les losanges rouges se
 situent souvent à l’intérieur ou proches des boxplots, ce qui suggère
 que le modèle reproduit correctement le niveau et la variabilité des
-arrivées selon l’heure, même si quelques écarts apparaissent
-ponctuellement, notamment sur la tranche horaire de 10h-11h ou la donné
-réelle est bien plus haute que celles simulées.
+arrivées selon l’heure, même si quelques écarts apparaissent, notamment
+sur la tranche horaire de 10h-11h où la donné réelle est bien plus haute
+que celles simulées.
 
 En conclusion, l’analyse conjointe des trajectoires cumulées et des
 distributions horaires montre que le processus de Poisson non homogène
@@ -458,9 +458,9 @@ et les variations marquées selon les tranches horaires, notamment le
 creux de la mi-journée et le pic de l’après-midi. La proximité des
 données réelles avec les distributions simulées confirme la capacité du
 modèle à rendre compte de la variabilité naturelle du phénomène.
-Néanmoins, certains écarts ponctuels, comme la sous-estimation des
-arrivées sur la tranche 10h–11h, suggèrent que l’intensité pourrait être
-affinée localement afin d’améliorer l’adéquation du modèle.
+Néanmoins, certains écarts, comme la sous-estimation des arrivées sur la
+tranche 10h–11h, suggèrent que l’intensité pourrait être affinée
+localement afin d’améliorer l’adéquation du modèle.
 
 ### Question 3) Modélisation de la durée de séjour par une distribution (/3)
 
@@ -646,22 +646,22 @@ de variation) et/ou leur paramètres d'échelle et de forme.
 
 Réponse :
 
-L’analyse des durées de séjour des patients selon une loi Gamma montre
-que, bien que la durée moyenne soit très proche entre les patients
-prioritaires (≈1,76) et non prioritaires (≈1,72), la dispersion diffère
-sensiblement. Les patients prioritaires présentent une variance plus
-élevée (1,66 contre 0,91) et un coefficient de variation plus important
-(0,73 contre 0,55), indiquant une plus grande variabilité relative de
-leurs durées de séjour. Cette différence se reflète également dans les
-paramètres de la loi Gamma : le paramètre shape des patients
-prioritaires (≈1,86) est plus faible que celui des non prioritaires
-(≈3,26), ce qui traduit une distribution plus asymétrique et étalée,
-avec une queue plus longue à droite. À l’inverse, la distribution des
-non prioritaires est plus concentrée autour de la moyenne. Ainsi, même
-si les durées moyennes sont similaires, les patients prioritaires
-montrent des séjours plus hétérogènes, ce qui peut avoir des
-implications pour la planification hospitalière et la gestion des
-ressources.
+L’analyse des durées de séjour des patients selon une loi Gamma
+ci-dessous montre que, bien que la durée moyenne soit très proche entre
+les patients prioritaires (≈1,76) et non prioritaires (≈1,72), la
+dispersion diffère sensiblement. Les patients prioritaires présentent
+une variance plus élevée (1,66 contre 0,91) et un coefficient de
+variation plus important (0,73 contre 0,55), indiquant une plus grande
+variabilité relative de leurs durées de séjour. Cette différence se
+reflète également dans les paramètres de la loi Gamma : le paramètre
+shape des patients prioritaires (≈1,86) est plus faible que celui des
+non prioritaires (≈3,26), ce qui traduit une distribution plus
+asymétrique et étalée, avec une queue plus longue à droite. À l’inverse,
+la distribution des non prioritaires est plus concentrée autour de la
+moyenne. Ainsi, même si les durées moyennes sont similaires, les
+patients prioritaires montrent des séjours plus hétérogènes, ce qui peut
+avoir des implications pour la planification hospitalière et la gestion
+des ressources.
 
 ```{r}
 #_Entrez votre code R ici_
@@ -1099,7 +1099,17 @@ summary(model1)
 temps_systeme$pred_W1 <- predict(model1)
 ```
 
-L’analyse du modèle linéaire simple de la durée de séjour en fonction du bloc horaire d’arrivée montre que la durée moyenne pour le bloc 8h–10h est de 0,94 h (Intercept, p = 0,044). Par rapport à ce bloc de référence, les durées moyennes augmentent de 0,63 h pour 10h–12h (p = 0,23), 0,76 h pour 12h–14h (p = 0,19), 1,14 h pour 14h–16h (p = 0,046) et 1,01 h pour 16h–18h (p = 0,063). Seul le bloc 14h–16h est significativement différent du bloc de référence, tandis que 16h–18h montre une tendance. Le modèle explique peu la variabilité globale (R² = 0,081), ce qui, combiné à des résidus très dispersés (de -1,57 à 3,80 h), indique que l’heure d’arrivée a un effet faible sur la durée de séjour et que la variabilité individuelle domine largement.
+L’analyse du modèle linéaire simple de la durée de séjour en fonction du
+bloc horaire d’arrivée montre que la durée moyenne pour le bloc 8h–10h
+est de 0,94 h (Intercept, p = 0,044). Par rapport à ce bloc de
+référence, les durées moyennes augmentent de 0,63 h pour 10h–12h (p =
+0,23), 0,76 h pour 12h–14h (p = 0,19), 1,14 h pour 14h–16h (p = 0,046)
+et 1,01 h pour 16h–18h (p = 0,063). Seul le bloc 14h–16h est
+significativement différent du bloc de référence, tandis que 16h–18h
+montre une tendance. Le modèle explique peu la variabilité globale (R² =
+0,081), ce qui, combiné à des résidus très dispersés (de -1,57 à 3,80
+h), indique que l’heure d’arrivée a un effet faible sur la durée de
+séjour et que la variabilité individuelle domine largement.
 
 ```{r}
 library(ggplot2)
@@ -1117,8 +1127,15 @@ ggplot(temps_systeme, aes(x = bloc_2h, y = W)) +
 
 ```
 
-Les points verts du graphique représentent la durée moyenne de séjour par bloc horaire. On observe environ 1 h pour le bloc 8h–10h, 1,5 h pour 10h–12h et 12h–14h, et un peu plus de 2 h pour 14h–16h, avec environ 2 h également pour 16h–18h. Quelques valeurs atypiques ressortent : un patient proche de 6 h pour le bloc 14h–16h, et deux patients autour de 5 h pour 16h–18h. En dehors de ces cas isolés, les durées se regroupent autour de la moyenne, montrant que malgré la présence de quelques extrêmes, la majorité des patients reste concentrée autour de la tendance centrale.
-
+Les points verts du graphique représentent la durée moyenne de séjour
+par bloc horaire. On observe environ 1 h pour le bloc 8h–10h, 1,5 h pour
+10h–12h et 12h–14h, et un peu plus de 2 h pour 14h–16h, avec environ 2 h
+également pour 16h–18h. Quelques valeurs atypiques ressortent : un
+patient proche de 6 h pour le bloc 14h–16h, et deux patients autour de 5
+h pour 16h–18h. En dehors de ces cas isolés, les durées se regroupent
+autour de la moyenne, montrant que malgré la présence de quelques
+extrêmes, la majorité des patients reste concentrée autour de la
+tendance centrale.
 
 Refaites un deuxième modèle linéaire intégrant une variable catégorielle
 qui indique si le patient est prioritaire.
@@ -1148,7 +1165,19 @@ summary(model2)
 temps_systeme2$pred_W2 <- predict(model2)
 ```
 
-L’analyse du modèle incluant le bloc horaire et le statut prioritaire montre que la durée moyenne de séjour pour un patient non prioritaire arrivé entre 8h et 10h est d’environ 0,93 h (p = 0,048). Les durées augmentent légèrement pour les blocs suivants : +0,63 h pour 10h–12h (p = 0,24), +0,76 h pour 12h–14h (p = 0,20), +1,13 h pour 14h–16h (p = 0,050) et +1,01 h pour 16h–18h (p = 0,066). En revanche, le statut prioritaire n’a pratiquement aucun effet sur la durée de séjour (+0,025 h, p = 0,936). Le modèle explique très peu la variabilité observée (R² = 0,081, ajusté = 0,002), et les résidus montrent une forte dispersion individuelle (-1,56 à 3,78 h). Globalement, ces résultats confirment que ni l’heure d’arrivée ni le statut prioritaire ne permettent de prédire de manière significative la durée de séjour, la variabilité individuelle restant largement dominante.
+L’analyse du modèle incluant le bloc horaire et le statut prioritaire
+montre que la durée moyenne de séjour pour un patient non prioritaire
+arrivé entre 8h et 10h est d’environ 0,93 h (p = 0,048). Les durées
+augmentent légèrement pour les blocs suivants : +0,63 h pour 10h–12h (p
+= 0,24), +0,76 h pour 12h–14h (p = 0,20), +1,13 h pour 14h–16h (p =
+0,050) et +1,01 h pour 16h–18h (p = 0,066). En revanche, le statut
+prioritaire n’a pratiquement aucun effet sur la durée de séjour (+0,025
+h, p = 0,936). Le modèle explique très peu la variabilité observée (R² =
+0,081, ajusté = 0,002), et les résidus montrent une forte dispersion
+individuelle (-1,56 à 3,78 h). Globalement, ces résultats confirment que
+ni l’heure d’arrivée ni le statut prioritaire ne permettent de prédire
+de manière significative la durée de séjour, la variabilité individuelle
+restant largement dominante.
 
 ```{r}
 temps_systeme2 <- temps_systeme2 %>%
@@ -1169,7 +1198,18 @@ ggplot(temps_systeme2, aes(x = bloc_2h, y = W, color = prioritaire)) +
 
 ```
 
-Le dernier graphique montre que la durée de séjour moyenne est très similaire pour les patients prioritaires et non prioritaires, quel que soit le bloc horaire d’arrivée. On observe que la durée moyenne reste autour de 1 h pour le matin (8h–10h), augmente légèrement vers 1,5 h pour 10h–14h, puis atteint un peu plus de 2 h pour 14h–16h, avant de redescendre vers 2 h pour 16h–18h. Quelques valeurs extrêmes apparaissent, comme un patient proche de 6 h pour le bloc 14h–16h, mais elles ne modifient pas la tendance générale. Globalement, les courbes des patients prioritaires et non prioritaires se superposent, ce qui confirme que le statut prioritaire n’influence pas de manière significative le temps passé dans le service, et que la variabilité individuelle reste largement dominante.
+Le dernier graphique montre que la durée de séjour moyenne est très
+similaire pour les patients prioritaires et non prioritaires, quel que
+soit le bloc horaire d’arrivée. On observe que la durée moyenne reste
+autour de 1 h pour le matin (8h–10h), augmente légèrement vers 1,5 h
+pour 10h–14h, puis atteint un peu plus de 2 h pour 14h–16h, avant de
+redescendre vers 2 h pour 16h–18h. Quelques valeurs extrêmes
+apparaissent, comme un patient proche de 6 h pour le bloc 14h–16h, mais
+elles ne modifient pas la tendance générale. Globalement, les courbes
+des patients prioritaires et non prioritaires se superposent, ce qui
+confirme que le statut prioritaire n’influence pas de manière
+significative le temps passé dans le service, et que la variabilité
+individuelle reste largement dominante.
 
 ### Question 5) Modélisation de la durée de séjour par un taux de départ (/3)
 
@@ -1303,19 +1343,24 @@ legend("topright",
 
 **Analyse du taux de défaillance :**
 
-Le graphique montre que : - Patients prioritaires (rouge) : taux de
-sortie croissant au début puis plateau → Ils sortent plus lentement au
-début (examens longs) puis accélère
-
--   Patients non-prioritaires (bleu) : taux augmente rapidement puis
-    se stabilise → Consultations plus rapides, sortie plus homogène dans
-    le temps
-
--   Tous les patients (noir) : comportement intermédiaire
-
-Contrairement à la loi exponentielle (taux constant), la loi Gamma
-permet de capturer cette dynamique : peu de sorties au début, puis
-accélération, puis stabilisation.
+L’analyse des paramètres des lois Gamma montre que le taux de
+défaillance augmente avec le temps pour tous les groupes, puisque les
+paramètres de forme sont supérieurs à 1. Les patients prioritaires
+présentent un paramètre de forme plus faible (k = 1,86), ce qui se
+traduit par une augmentation progressive du taux de défaillance au cours
+du temps, indiquant que leur risque de complication ou d’événement
+adverse croît lentement. Les patients non prioritaires, en revanche, ont
+un paramètre de forme plus élevé (k = 3,26), correspondant à un taux de
+défaillance qui croît rapidement, donc leur risque augmente fortement
+avec la durée passée dans le service. L’ensemble des patients montre un
+comportement intermédiaire (k = 2,68), reflétant la combinaison des deux
+dynamiques. En conclusion, l’analyse du taux de défaillance montre que
+les patients non prioritaires présentent un risque qui augmente plus
+rapidement avec le temps que celui des patients prioritaires. Autrement
+dit, plus un patient non prioritaire reste dans le service, plus il a de
+chances de rencontrer un problème ou une complication, tandis que ce
+risque croît plus lentement pour les patients prioritaires. L’ensemble
+des patients se situe entre ces deux dynamiques.
 
 -   De construire et d'analyser un modèle (calcul de moyennes simples)
     qui estime ce taux de risque par tranche de 30min
@@ -1330,11 +1375,10 @@ accélération, puis stabilisation.
 
 library(ggplot2)
 library(dplyr)
+library(lubridate)
 
-# Définir les tranches de 30min = 0.5h
-breaks_30 <- seq(0, ceiling(max(duree)), by = 0.5)
+breaks_30 <- seq(0, ceiling(max(data_patient$duree_sejour)), by = 0.5)
 
-# Fonction pour calculer le hazard par tranche
 hazard_par_tranche <- function(durees, breaks) {
   n <- length(breaks) - 1
   hazard <- numeric(n)
@@ -1343,12 +1387,9 @@ hazard_par_tranche <- function(durees, breaks) {
     debut <- breaks[i]
     fin   <- breaks[i + 1]
     
-    # Nombre à risque = encore présents au début de la tranche
     a_risque <- sum(durees >= debut)
-    # Nombre de sorties dans la tranche
     sorties  <- sum(durees >= debut & durees < fin)
     
-    # Taux de risque = sorties / à risque
     hazard[i] <- ifelse(a_risque > 0, sorties / a_risque, NA)
   }
   
@@ -1359,20 +1400,18 @@ hazard_par_tranche <- function(durees, breaks) {
   )
 }
 
-# === 1. TAUX DE RISQUE GLOBAL ===
-hazard_global <- hazard_par_tranche(duree, breaks_30)
+hazard_global <- hazard_par_tranche(data_patient$duree_sejour, breaks_30)
 
 ggplot(hazard_global, aes(x = debut, y = hazard)) +
   geom_line(linewidth = 1, color = "black") +
   geom_point(size = 2, color = "black") +
   labs(
-    title = "Taux de risque de sortie – Global (par tranches de 30min)",
+    title = "Taux de défaillance empirique – Tous patients (tranches de 30min)",
     x = "Temps de séjour (heures)",
-    y = "Taux de risque empirique"
+    y = "Taux de défaillance"
   ) +
   theme_minimal()
 
-# === 2. TAUX DE RISQUE PAR BLOC D'ARRIVÉE ===
 data_patient <- data_patient %>%
   mutate(
     heure_arrivee = hour(arrival_time),
@@ -1389,46 +1428,88 @@ hazard_par_bloc <- data_patient %>%
   group_by(bloc_2h) %>%
   group_map(~ hazard_par_tranche(.x$duree_sejour, breaks_30), .keep = TRUE)
 
-# Combiner en un seul dataframe
 hazard_bloc_df <- bind_rows(hazard_par_bloc, .id = "bloc_id")
 hazard_bloc_df$bloc <- levels(data_patient$bloc_2h)[as.numeric(hazard_bloc_df$bloc_id)]
 
 ggplot(hazard_bloc_df, aes(x = debut, y = hazard, color = bloc)) +
-  geom_line(linewidth = 1) +
+  geom_line(linewidth = 1.2) +
   labs(
-    title = "Taux de risque par bloc d'arrivée (30min)",
+    title = "Taux de défaillance par bloc d'arrivée (2h)",
     x = "Temps de séjour (heures)",
-    y = "Taux de risque",
+    y = "Taux de défaillance",
     color = "Bloc d'arrivée"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1")
 
-# === 3. TAUX DE RISQUE PAR PRIORITÉ ===
 hazard_priorite <- data_patient %>%
   group_by(prioritaire) %>%
   group_map(~ hazard_par_tranche(.x$duree_sejour, breaks_30), .keep = TRUE)
 
 hazard_prior_df <- bind_rows(hazard_priorite, .id = "prioritaire_id")
-hazard_prior_df$prioritaire <- ifelse(hazard_prior_df$prioritaire_id == "1", "Non", "Oui")
+# Ajustement des labels selon la variable prioritaire
+prior_labels <- levels(factor(data_patient$prioritaire))
+hazard_prior_df$prioritaire <- prior_labels[as.numeric(hazard_prior_df$prioritaire_id)]
 
 ggplot(hazard_prior_df, aes(x = debut, y = hazard, color = prioritaire)) +
   geom_line(linewidth = 1.5) +
   labs(
-    title = "Taux de risque – Patients prioritaires vs non prioritaires (30min)",
+    title = "Taux de défaillance – Patients prioritaires vs non prioritaires (30min)",
     x = "Temps de séjour (heures)",
-    y = "Taux de risque",
+    y = "Taux de défaillance",
     color = "Prioritaire"
   ) +
-  scale_color_manual(values = c("Non" = "blue", "Oui" = "red")) +
+  scale_color_manual(values = c("Oui" = "red", "Non" = "blue")) +
   theme_minimal()
 
 ```
 
 Interprétation des taux de risque par tranches :
 
-Les résultats montrent une différence nette entre les groupes. Les patients non prioritaires présentent un taux de sortie plus élevé et plus concentré, correspondant à des prises en charge plus simples, tandis que les patients prioritaires ont un taux plus faible et plus étalé, reflétant des parcours plus longs et plus variables. L’estimation empirique par tranches de trente minutes confirme ces tendances et met également en évidence un effet organisationnel lié à l’heure d’arrivée, les patients arrivant tard étant incités à sortir avant la fermeture du service.
+Le taux de défaillance par tranches de 30 minutes montre que le risque
+varie fortement au cours du séjour. Au début, il est relativement faible
+(\<0,3) pendant la première heure, puis il augmente pour atteindre un
+premier pic de 0,5 autour de 1h30, redescend à 0,2, avant de remonter à
+0,65, et ainsi de suite. Cette dynamique illustre que certains patients
+sortent plus rapidement que d’autres, créant des variations du risque
+dans le temps. En comparant les groupes, les patients non prioritaires
+présentent des pics plus rapides et élevés (jusqu’à 1), tandis que les
+patients prioritaires ont une augmentation plus progressive du taux de
+défaillance (pics autour de 0,5), reflétant une prise en charge plus
+régulière. Les blocs horaires plus chargés accentuent également les pics
+de risque, montrant que la congestion influence la probabilité
+d’événement. Ainsi, le suivi du taux de défaillance par tranche permet
+de mettre en évidence les périodes et les populations à plus haut
+risque, information qu’une moyenne globale ne pourrait pas révéler.
 
-En conclusion, l’analyse théorique et empirique valide le choix de la loi Gamma pour modéliser les durées de séjour et justifie l’utilisation de paramètres distincts selon la priorité des patients, base essentielle pour les simulations ultérieures.
+Le deuxième graphique montre le taux de défaillance en fonction du bloc
+horaire d’arrivée des patients. On observe que l’heure d’arrivée
+influence le risque au cours du séjour. Par exemple, les patients
+arrivant entre 8h et 10h présentent un taux de défaillance inférieur à
+0,5 pendant la première heure, puis celui-ci augmente rapidement pour
+atteindre 1 au bout de 2 heures, indiquant une sortie ou un événement
+plus concentré dans le temps. En revanche, les patients arrivant entre
+14h et 16h présentent des variations plus graduelles : le taux reste en
+dessous de 0,5 pendant environ 5 heures avant d’atteindre 1 après 6
+heures, reflétant une présence plus longue dans le système. Ces
+observations suggèrent que les périodes de forte affluence ou les blocs
+horaires plus chargés peuvent accentuer le risque de défaillance,
+soulignant l’impact de l’organisation et de la congestion sur la
+dynamique du séjour.
+
+Enfin, le dernier graphique montre l’évolution du taux de défaillance
+selon le caractère prioritaire ou non des patients. On observe que,
+globalement, le taux de défaillance des patients prioritaires reste
+inférieur à celui des patients non prioritaires pendant les quatre
+premières heures, reflétant une prise en charge plus rapide et
+régulière. En revanche, pour les patients non prioritaires, le taux de
+défaillance atteint rapidement 1, indiquant que leur risque d’événement
+augmente fortement après un certain temps d’attente, tandis que pour les
+patients prioritaires, le taux n’atteint 1 qu’au bout de 5h30, montrant
+que le risque croît plus lentement. Cette différence souligne l’effet
+protecteur de la priorisation et met en évidence l’importance de la
+gestion du flux des patients pour réduire le risque de complications ou
+d’événements indésirables.
 
 ### Question 6) Calculs des niveaux d'occupation et validation des modèles (/5)
 
@@ -1619,10 +1700,25 @@ tableau_metriques <- data.frame(
 
 print(tableau_metriques, row.names = FALSE, digits = 3)
 ```
- Dans cette première partie, trente journées complètes ont été simulées en combinant un processus de Poisson par blocs horaires pour les arrivées et différentes lois de durée de séjour (Exponentielle, Gamma et Weibull). La comparaison entre l’occupation réelle et les prédictions moyennes montre que le modèle Gamma reproduit le plus fidèlement la dynamique observée, notamment le pic d’occupation en milieu de journée. Les intervalles de confiance restent toutefois larges, traduisant une forte variabilité intrinsèque du système, en particulier en fin de journée où des effets de bord apparaissent avec des patients restant après l’horaire de fermeture.
 
-Les métriques quantitatives confirment ces observations graphiques. Le modèle Gamma présente l’erreur moyenne la plus faible et un biais proche de zéro, tandis que le modèle exponentiel surestime l’occupation et ne capture pas correctement la variabilité des durées de séjour. Ces résultats sont cohérents avec les analyses précédentes basées sur les critères d’information et l’étude du taux de défaillance, et valident le choix de la loi Gamma pour la modélisation des durées.
+Dans cette première partie, trente journées complètes ont été simulées
+en combinant un processus de Poisson par blocs horaires pour les
+arrivées et différentes lois de durée de séjour (Exponentielle, Gamma et
+Weibull). La comparaison entre l’occupation réelle et les prédictions
+moyennes montre que le modèle Gamma reproduit le plus fidèlement la
+dynamique observée, notamment le pic d’occupation en milieu de journée.
+Les intervalles de confiance restent toutefois larges, traduisant une
+forte variabilité intrinsèque du système, en particulier en fin de
+journée où des effets de bord apparaissent avec des patients restant
+après l’horaire de fermeture.
 
+Les données confirment ces observations graphiques. Le modèle Gamma
+présente l’erreur moyenne la plus faible et un biais proche de zéro,
+tandis que le modèle exponentiel surestime l’occupation et ne capture
+pas correctement la variabilité des durées de séjour. Ces résultats sont
+cohérents avec les analyses précédentes basées sur les critères
+d’information et l’étude du taux de défaillance, et valident le choix de
+la loi Gamma pour la modélisation des durées.
 
 Refaites ce travail d'estimation de l'occupation en considérant les
 arrivées des patients connues et visualiser et analyser les gains en
@@ -1772,9 +1868,25 @@ print(gains, row.names = FALSE, digits = 1)
 Notes : Ici, on ne sépare pas les données en données d'entraînement et de test pour des raisons pratiques de quantité de données mais c'est un point à tenir en compte dans une vrai validation de modèle.
 ```
 
-Dans cette seconde partie, les heures d’arrivée réelles ont été utilisées tout en conservant la simulation des durées de séjour. Cette approche permet d’isoler l’impact du modèle de durée indépendamment de l’incertitude liée aux arrivées. Les performances s’améliorent alors nettement, avec une réduction de l’erreur moyenne de l’ordre de 30 à 50 pour cent selon les modèles, et des intervalles de confiance beaucoup plus étroits. Cela montre que la variabilité du processus d’arrivée constitue la principale source d’incertitude dans la prédiction de l’occupation.
+Dans cette seconde partie, les heures d’arrivée réelles ont été
+utilisées tout en conservant la simulation des durées de séjour. Cette
+approche permet d’isoler l’impact du modèle de durée indépendamment de
+l’incertitude liée aux arrivées. Les performances s’améliorent alors
+nettement, avec une réduction de l’erreur moyenne de l’ordre de 30 à 50
+pour cent selon les modèles, et des intervalles de confiance beaucoup
+plus étroits. Cela montre que la variabilité du processus d’arrivée
+constitue la principale source d’incertitude dans la prédiction de
+l’occupation.
 
-D’un point de vue opérationnel, ces résultats soulignent l’intérêt majeur d’un suivi en temps réel des arrivées. Une meilleure connaissance des flux entrants permettrait d’anticiper les pics d’occupation, d’adapter les ressources au cours de la journée et de limiter les phénomènes de congestion. En conclusion, le modèle combinant un processus d’arrivée de Poisson par blocs horaires et une loi Gamma pour les durées de séjour offre un compromis pertinent entre simplicité et précision, et constitue une base solide pour une gestion dynamique et optimisée du service d’urologie.
+D’un point de vue opérationnel, ces résultats soulignent l’intérêt
+majeur d’un suivi en temps réel des arrivées. Une meilleure connaissance
+des flux entrants permettrait d’anticiper les pics d’occupation,
+d’adapter les ressources au cours de la journée et de limiter les
+phénomènes de congestion. En conclusion, le modèle combinant un
+processus d’arrivée de Poisson par blocs horaires et une loi Gamma pour
+les durées de séjour offre un compromis pertinent entre simplicité et
+précision, et constitue une base solide pour une gestion dynamique et
+optimisée du service d’urologie.
 
 ### Question bonus (/1) :
 
@@ -1785,41 +1897,38 @@ d'attente" que vous avez implémentés ? (Justifiez)
 Note :  On est ici sur un cas spécial le modèle de file d'attente est sans file d'attente
 ```
 
-La notation de Kendall pour les files d'attente est : **A/B/c/K/N/D**
+La notation de Kendall pour les files d'attente est : A/B/c/K/N/D
 
 Où : - A = processus d'arrivée - B = processus de service - c = nombre
 de serveurs - K = capacité du système - N = population source - D =
 discipline de la file
 
-**Pour nos modèles :**
+Pour nos modèles :
 
-Comme indiqué, on est dans un cas spécial **sans file d'attente** (les
+Comme indiqué, on est dans un cas spécial sans file d'attente (les
 patients sont directement pris en charge à l'arrivée, pas d'attente pour
 être servi).
 
-**Modèle avec arrivées simulées :** - Arrivées : Poisson non-homogène
-(taux variable par bloc de 2h) → **Mt/G/∞** - Service : Gamma, Weibull,
-ou Exponentielle selon le modèle - Serveurs : ∞ (ou suffisamment
-nombreux pour éviter l'attente) - Pas de limite de capacité, population
-infinie
+Modèle avec arrivées simulées : - Arrivées : Poisson non-homogène (taux
+variable par bloc de 2h) → Mt/G/∞ - Service : Gamma, Weibull, ou
+Exponentielle selon le modèle - Serveurs : ∞ (ou suffisamment nombreux
+pour éviter l'attente) - Pas de limite de capacité, population infinie
 
-**Notation** : **Mt/G/∞** ou **Mt/Gamma/∞**, **Mt/Weibull/∞**,
-**Mt/Exp/∞**
+Notation : Mt/G/∞ ou Mt/Gamma/∞, Mt/Weibull/∞, Mt/Exp/∞
 
-Le **Mt** indique un processus de Poisson non-homogène (taux dépend du
-temps t). Le **G** (General) indique une distribution générale de
-service. Le **∞** indique un nombre illimité de serveurs (pas
-d'attente).
+Le Mt indique un processus de Poisson non-homogène (taux dépend du temps
+t). Le G (General) indique une distribution générale de service. Le ∞
+indique un nombre illimité de serveurs (pas d'attente).
 
-**Modèle avec arrivées connues :** - Arrivées : Déterministes (connues à
-l'avance) → **D/G/∞** - Service : idem ci-dessus - Serveurs : ∞
+Modèle avec arrivées connues : - Arrivées : Déterministes (connues à
+l'avance) → D/G/∞ - Service : idem ci-dessus - Serveurs : ∞
 
-**Notation** : **D/Gamma/∞**, **D/Weibull/∞**, **D/Exp/∞**
+Notation : D/Gamma/∞, D/Weibull/∞, D/Exp/∞
 
-Le **D** (Deterministic) indique que les arrivées sont déterministes et
+Le D (Deterministic) indique que les arrivées sont déterministes et
 connues.
 
-**Justification :** - Pas de file d'attente car chaque patient est pris
-en charge immédiatement - Le système a une capacité suffisante
-(médecins, salles) pour éviter l'attente - C'est cohérent avec un
-service de consultations externes où les RDV sont planifiés
+Justification : - Pas de file d'attente car chaque patient est pris en
+charge immédiatement - Le système a une capacité suffisante (médecins,
+salles) pour éviter l'attente - C'est cohérent avec un service de
+consultations externes où les RDV sont planifiés
