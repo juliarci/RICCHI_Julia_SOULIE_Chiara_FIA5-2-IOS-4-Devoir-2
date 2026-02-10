@@ -97,7 +97,7 @@ Réponse :
 Attention : utiliser bien les **arrivées initiales** des patients et pas les arrivées intermédiaires après une transition
 ```
 
--   Calcul le niveau d'occupation moyen :
+-   **Calcul le niveau d'occupation moyen :**
 
     Rappel et conseil : $L = \frac{1}{\int dt} \int l(t)dt$ avec
     $l(t) = A(t) - D(t)$, vous pouvez calculer en décomposant la période
@@ -105,7 +105,7 @@ Attention : utiliser bien les **arrivées initiales** des patients et pas les ar
     $L[8h;18h] = \frac{1}{\sum_i t_i} \sum_i l_i t_i$ avec $t_i$ la
     durée de la zone $i$
 
-```{r}
+```{r answer 1.1.1}
 library(readxl)
 library(dplyr)
 
@@ -160,9 +160,25 @@ L
 
 ```
 
--   Calcul du taux d'arrivée moyen :
+Le niveau d’occupation moyen L est calculé comme une moyenne temporelle,
+en intégrant le nombre de patients présents l(t) sur la période [8h ;
+18h], conformément à la définition :
 
-```{r}
+$L = \frac{1}{\int dt} \int l(t)dt$
+
+Cette méthode est cohérente avec la définition asymptotique de L, mais
+appliquée ici sur une période finie.
+
+On obtient :
+
+$L≈9L$
+
+En moyenne, 9 patients sont présents simultanément dans le service sur
+la période observée.
+
+-   **Calcul du taux d'arrivée moyen :**
+
+```{r answer 1.1.2}
 library(dplyr)
 library(readxl)
 library(tidyverse)
@@ -196,9 +212,27 @@ lambda <- nrow(arrivees_8_18) / 10
 lambda
 ```
 
--   Calcul du niveau d'attente moyen :
+Le taux d’arrivée moyen est défini comme :
 
-```{r}
+$λ= \frac{\text{nombre total d’arrivées}}{\text{durée d’observation}}$
+
+Ici :
+
+-   durée = 10 heures (8h–18h)
+
+-   seules les entrées initiales sont comptabilisées (activité Entrée
+    des Consultations)
+
+    On obtient :
+
+    $λ≈6.8  patients/heure$
+
+    En moyenne, 6.8 patients arrivent par heure sur la période.
+
+-   **Calcul du niveau d'attente moyen :**
+
+```{r answer 1.1.3}
+
 # Load the Excel dataset Patient URO
 df <- read_excel("Log_Patient_URO_12112015.xlsx")
 df
@@ -228,9 +262,19 @@ W <- mean(temps_systeme$W, na.rm = TRUE)
 W
 ```
 
--   Comparaison de $L$ et $\lambda W$ :
+Le temps moyen dans le système est une moyenne par patient :
 
-    ```{r}
+$W=1N∑m=1N(tmsortie−tmentreˊe)W = \frac{1}{N} \sum_{m=1}^N (t^{\text{sortie}}_m - t^{\text{entrée}}_m)$
+
+On obtient :
+
+W≈1.7 heures
+
+Un patient passe en moyenne 1h42 dans le système.
+
+-   **Comparaison de** $L$ **et** $\lambda W$ **:**
+
+    ```{r answer 1.1.4}
     library(dplyr)
     library(readxl)
 
@@ -252,6 +296,16 @@ W
     lambda*W
     ```
 
+-   **Valeurs obtenues :**
+
+    L≈9
+
+    λW≈6.8×1.7≈11.6
+
+    On observe donc :
+
+    $L≠λWL$
+
 -   Rappel et conseil : Tenter d'expliquer pourquoi on observe une
     différence. En particulier, pour cette explication penser à pourquoi
     $\lambda W$ peut être assimilée à une moyenne des niveaux de
@@ -260,19 +314,45 @@ W
     avec $\mathbb{1}_m(t)$ la fonction d'indicatrice de présence du
     patient $m$
 
-**Réponse :**
+**Interprétation de l’écart observé :**
 
-On observe que L≈9 alors que λ\*W≈12 La différence s’explique par le
-fait que :
+Cet écart ne remet pas en cause la loi de Little, mais s’explique par la
+manière dont les quantités sont estimées.
 
--   **Effets de bord temporels** : La journée ne couvre pas un cycle
-    complet (patients arrivés avant 8h ou partis après 18h)
+##### Moyenne temporelle vs moyenne par patient
 
--   **Non-stationnarité** : Les arrivées sont concentrées le matin, les
-    départs étalés
+-   L est une **moyenne dans le temps** : à chaque instant, on compte
+    combien de patients sont présents.
 
--   **Moyenne temporelle vs moyenne par patient** : L est une moyenne
-    dans le temps, λW est une moyenne sur les patients
+-   W est une **moyenne sur les patients** : les patients ayant un long
+    séjour contribuent davantage à
+
+Ainsi, λW peut être interprété comme une moyenne des temps de présence
+individuels, tandis que L décrit l’occupation instantanée moyenne.
+
+##### Effets de bord liés à la fenêtre [8h–18h]
+
+-   Des patients peuvent être présents avant 8h
+
+-   D’autres peuvent sortir après 18h
+
+Ces patients sont comptabilisés dans W mais pas entièrement dans L, ce
+qui tend à augmenter λW par rapport à L.
+
+##### Non-stationnarité du système
+
+Les arrivées ne sont pas uniformes sur la journée (pics le matin, creux
+ensuite). Or, la loi de Little suppose un régime stationnaire
+asymptotique, ce qui n’est pas strictement vérifié ici.
+
+#### Conclusion
+
+La relation L=λW n’est pas exactement vérifiée sur la période étudiée,
+ce qui est cohérent avec une observation finie et non stationnaire d’un
+système réel.\
+Les ordres de grandeur restent compatibles, ce qui confirme que la loi
+de Little s’applique ici comme principe fondamental, mais doit être
+interprétée de manière empirique et non comme une égalité stricte.
 
 ### Question 2) Processus de Poisson d'arrivée non homogène (/3)
 
@@ -472,10 +552,7 @@ normale, exponentielle, gamma, weibull.
 
 Réponse :
 
-*Entrez votre texte ici*
-
-```{r}
-#_Entrez votre code R ici_
+```{r answer 1.3.1}
 
 library(readxl)
 library(MASS)
@@ -574,7 +651,7 @@ moyennes, écart-types et coefficients de variation obtenus pour chaque
 distribution et par rapport au calcul direct des indicateurs sur les
 variables statistiques.
 
-Réponse :
+**Réponse :**
 
 Parmi les distributions étudiées, la loi de Weibull apparaît comme la
 plus appropriée pour modéliser la durée de séjour. Elle respecte le
@@ -593,8 +670,7 @@ observations. Ainsi, la loi de Weibull est retenue comme meilleur
 compromis, la loi Gamma pouvant être considérée comme une alternative
 valable en second choix.
 
-```{r}
-#_Entrez votre code R ici_
+```{r answer 1.3.2}
 
 # Indicateurs empiriques
 mean_emp <- mean(duree)
@@ -644,7 +720,7 @@ prioritaires et non prioritaires et comparez les deux distributions
 graphiquement et à l'aide leur moments (espérance, variance, coefficient
 de variation) et/ou leur paramètres d'échelle et de forme.
 
-Réponse :
+**Réponse :**
 
 L’analyse des durées de séjour des patients selon une loi Gamma
 ci-dessous montre que, bien que la durée moyenne soit très proche entre
@@ -663,8 +739,7 @@ patients prioritaires montrent des séjours plus hétérogènes, ce qui peut
 avoir des implications pour la planification hospitalière et la gestion
 des ressources.
 
-```{r}
-#_Entrez votre code R ici_
+```{r answer 1.3.3}
 
 data_patient <- data_raw %>%
   mutate(
@@ -780,6 +855,43 @@ abline(0, 1, col = "blue")
 par(mfrow = c(1, 1))
 ```
 
+**Les histogrammes (Comparaison des durées de séjour) montrent que :**
+
+-    Les deux groupes ont des **durées moyennes proches**.
+
+-   Les patients **prioritaires** présentent une distribution plus
+    étalée, avec une **queue droite plus lourde**.
+
+-   Les non prioritaires sont plus concentrés autour de la moyenne.
+
+Cela est cohérent avec les paramètres Gamma estimés :
+
+-   **Shape plus faible** pour les prioritaires → plus grande asymétrie
+
+-   **CV plus élevé** → variabilité accrue
+
+Les Q–Q plots montrent :
+
+-    Un bon alignement global avec la diagonale, validant l’hypothèse
+    Gamma
+
+-    Des écarts plus marqués en queue pour les prioritaires, indiquant
+    la présence de séjours exceptionnellement longs
+
+La loi Gamma capture correctement la structure globale, tout en révélant
+les différences de variabilité entre groupes.
+
+**Conclusion :**
+
+Les analyses graphiques confirment les résultats numériques : la durée
+de séjour présente une asymétrie à droite incompatible avec une loi
+normale ou exponentielle. Les lois Gamma et Weibull offrent un
+ajustement cohérent, la Weibull étant légèrement supérieure selon le
+critère AIC. La séparation prioritaires / non prioritaires met en
+évidence des durées moyennes similaires mais des niveaux de variabilité
+distincts, ce qui est correctement capturé par une modélisation Gamma
+différenciée.
+
 ### Question 4) Modélisation de la durée de séjour par régression linéaire (/3)
 
 A l'aide de la fonction *lm*, construisez et analysez un modèle de
@@ -797,11 +909,9 @@ summary(model)
 predict(model) # predict(model,newdata=[new_dataframe]) if new data
 ```
 
-Réponse :
+**Réponse :**
 
-*Entrez votre texte ici*
-
-```{r}
+```{r answer 4.1.1}
 
 library(dplyr)
 library(lubridate)
@@ -1071,7 +1181,7 @@ Ces observations sont cohérentes avec le faible R² de chaque modèle et
 soulignent le rôle secondaire de l’heure d’arrivée et du statut
 prioritaire dans l’explication des durées de séjour.
 
-```{r}
+```{r answer 4.1.2}
 library(dplyr)
 library(lubridate)
 
@@ -1111,7 +1221,7 @@ montre une tendance. Le modèle explique peu la variabilité globale (R² =
 h), indique que l’heure d’arrivée a un effet faible sur la durée de
 séjour et que la variabilité individuelle domine largement.
 
-```{r}
+```{r answer 4.1.3}
 library(ggplot2)
 
 ggplot(temps_systeme, aes(x = bloc_2h, y = W)) +
@@ -1142,9 +1252,7 @@ qui indique si le patient est prioritaire.
 
 Réponse :
 
-*Entrez votre texte ici*
-
-```{r}
+```{r answer 4.1.4}
 df1 <- df1 %>%
   mutate(prioritaire = ifelse(grepl("PRIO", Activity_DETAILS), "Oui", "Non"))
 
@@ -1179,7 +1287,7 @@ ni l’heure d’arrivée ni le statut prioritaire ne permettent de prédire
 de manière significative la durée de séjour, la variabilité individuelle
 restant largement dominante.
 
-```{r}
+```{r answer 4.1.5}
 temps_systeme2 <- temps_systeme2 %>%
   mutate(prioritaire = factor(prioritaire, levels = c("Oui", "Non")))
 
@@ -1278,8 +1386,7 @@ $$
 }, \quad t>0
 $$
 
-```{r}
-#_Entrez votre code R ici_
+```{r answer 5.1}
 library(MASS)
 
 # Séparer les durées par priorité
@@ -1368,10 +1475,7 @@ des patients se situe entre ces deux dynamiques.
     séparant selon le bloc d'arrivée de 2h [8h;10h], ..., ]16h;18h],
     puis en séparant par patients prioritaires et non prioritaires
 
-*Entrez votre texte et formules ici*
-
-```{r}
-#_Entrez votre code R ici_
+```{r answer 5.1.2}
 
 library(ggplot2)
 library(dplyr)
@@ -1464,7 +1568,7 @@ ggplot(hazard_prior_df, aes(x = debut, y = hazard, color = prioritaire)) +
 
 ```
 
-Interprétation des taux de risque par tranches :
+**Interprétation des taux de risque par tranches :**
 
 Le taux de défaillance par tranches de 30 minutes montre que le risque
 varie fortement au cours du séjour. Au début, il est relativement faible
@@ -1522,12 +1626,9 @@ visuelle et en utilisant une mesure d'erreur absolu moyenne et/ou
 quadratique (ou mis à la $\sqrt()$) et une mesure de biais sur
 l'occupation moyenne.
 
-Réponse :
+**Réponse :**
 
-*Entrez votre texte ici*
-
-```{r}
-#_Entrez votre code R ici_
+```{r answer 6.1.1}
 
 # Fonction pour calculer l'occupation réelle
 calculer_occupation_reelle <- function(data_patient, debut, fin, pas_temps = 0.1) {
@@ -1724,10 +1825,7 @@ Refaites ce travail d'estimation de l'occupation en considérant les
 arrivées des patients connues et visualiser et analyser les gains en
 terme de qualité de prédiction.
 
-*Entrez votre texte ici*
-
-```{r}
-#_Entrez votre code R ici_
+```{r answer 6.1.2}
 
 # Fonction de simulation avec arrivées connues
 simuler_avec_arrivees_connues <- function(data_patient, loi_duree, params_duree, n_sim = 30) {
